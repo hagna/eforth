@@ -78,7 +78,7 @@ func TestAddPrimCall(t *testing.T) {
 	f := NewForth()
 	called := false
 	f.AddPrim("BYE", func() { called = true })
-	f.Call("BYE")
+	f.CallFn("BYE")
 	if called != true {
 		t.Fatal("didn't call the function")
 	}
@@ -116,7 +116,7 @@ func TestAddPrimCall2(t *testing.T) {
 	f.IP = 0
 	o := f.IP
 	f.AddPrim("NEXT", f.NEXT)
-	f.Call("NEXT")
+	f.CallFn("NEXT")
 	o2 := f.IP
 	if o2 <= o {
 		t.Fatal("didn't call the function NEXT or NEXT implementation has changed")
@@ -132,3 +132,39 @@ func TestAddPrimAddr(t *testing.T) {
 		t.Fatal("address of BYE ought to be", CODEE, "and not ", f.Addr("BYE"))
 	}
 }
+
+// Adding a colon word creates a new word named after the first string after the colon
+func TestAddColon(t *testing.T) {
+    f := NewForth()
+    f.AddWord(": nop ;")
+    if f.Addr("nop") == 0 {
+        t.Fatal("nop should have an address", f.Addr("nop"))
+    }
+}
+
+func Uint16sEqual(a, b []uint16) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i, v := range a {
+		if v != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+
+// A colon word also ought to go in the code dictionary correctly
+func TestAddColonLst(t *testing.T) {
+    f := NewForth()
+    f.AddWord(": nop ;")
+    good := []uint16{f.Addr("call"), f.Addr(":"), f.Addr(";")}
+    start := f.Addr("nop")
+    cmp := []uint16{f.WordPtr(start), f.WordPtr(start+2), f.WordPtr(start+4)}
+    if !Uint16sEqual(cmp, good) {
+        t.Fatal("code of nop wasn't", good, "but was", cmp)
+    }
+}
+
+

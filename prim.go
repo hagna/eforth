@@ -32,7 +32,7 @@ CODE  EXECUTE     ( ca -- )         \ Execute the word at ca.
 */
 func (f *Forth) Execute() {
 	bx := f.Pop()
-	f.WP = f.WordPtr(bx)
+	f.WP = bx
 }
 
 /*
@@ -127,6 +127,17 @@ func (f *Forth) doLIST() {
 	XCHG(&f.RP, &f.SP)
 	f.IP = f.Pop()
 	f.NEXT()
+}
+
+/*
+    Call puts the addresss of the first word after doLIST on the stack
+    and then then calls the primitive code for the word following itself
+*/
+func (f *Forth) Call() {
+    f.Push(f.WP + 4)
+    callme := f.WordPtr(f.WP+2)
+    word := f.Frompcode(callme)
+    f.CallFn(word) // ought to be doLIST unless we use native Call for something else
 }
 
 // the converse of doLIST. Ends the colon definition.

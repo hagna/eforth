@@ -5,6 +5,7 @@ package eforth
 import (
 	"encoding/binary"
 	"fmt"
+    "strings"
 )
 
 /*
@@ -104,6 +105,7 @@ func NewForth() *Forth {
 		word string
 		m    fn
 	}{
+        {"call", f.Call},
 		{":", f.doLIST},
 		{"!io", f.B_IO},
 		{"bye", f.BYE},
@@ -154,11 +156,26 @@ func (f *Forth) AddPrim(word string, m fn) {
 	f.SetWordPtr(addr, f.prims)
 }
 
+func (f *Forth) AddWord(cdef string) {
+    all := strings.Fields(cdef)
+    f.prims = f.prims + 1
+    addr := CODEE + (2 * (f.prims -1))
+    name := all[1]
+    f.prim2addr[name] = addr
+    iwords := append([]string{"call", ":"}, all[2:]... )
+    fmt.Println(iwords)
+    for i, word := range iwords {
+        wa := f.Addr(word)
+        f.SetWordPtr(addr + uint16(i*2), wa)
+        fmt.Println(i,word,wa)
+    }
+}
+
 func (f *Forth) Addr(word string) uint16 {
 	return f.prim2addr[word]
 }
 
-func (f *Forth) Call(word string) {
+func (f *Forth) CallFn(word string) {
 	m := f.prim2func[word]
 	fmt.Println("m is", m)
 	m()
@@ -176,9 +193,9 @@ func (f *Forth) Main() {
 	var word string
 inf:
 	for {
-		pcode = f.WP
+		pcode = f.WordPtr(f.WP)
 		word = f.Frompcode(pcode)
-		f.Call(word)
+		f.CallFn(word)
 		if f.IP == 0xffff { // for BYE
 			break inf
 		}
@@ -205,9 +222,9 @@ func (f *Forth) SetBytePtr(i uint16, v byte) {
 // NEXT ought to be a macro it sets WP to the next instruction
 // and increments the instruction pointer
 func (f *Forth) NEXT() {
-	fmt.Println("IP is", f.IP)
-	f.WP = f.WordPtr(f.IP) // same as LODSW puts [IP] into WP and advances IP
+	f.WP = f.IP // f.WordPtr(f.IP) // same as LODSW puts [IP] into WP and advances IP
 	f.IP += 2
+	fmt.Println("IP is", f.IP, "and WP is", f.WP)
 }
 
 // swap register values
