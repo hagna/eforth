@@ -54,7 +54,6 @@ type Forth struct {
 	SP uint16
 	RP uint16
 	WP uint16
-	UP uint16
 
 	input  interface{}
 	output interface{}
@@ -180,7 +179,6 @@ inf:
 		pcode = f.WP
 		word = f.Frompcode(pcode)
 		f.Call(word)
-		//f.NEXT() // only the LODSW part of NEXT the final JMP is the next iteration of this loop
 		if f.IP == 0xffff { // for BYE
 			break inf
 		}
@@ -208,7 +206,7 @@ func (f *Forth) SetBytePtr(i uint16, v byte) {
 // and increments the instruction pointer
 func (f *Forth) NEXT() {
 	fmt.Println("IP is", f.IP)
-	f.WP = f.LEA(f.IP) // same as LODSW puts [IP] into WP and advances IP
+	f.WP = f.WordPtr(f.IP) // same as LODSW puts [IP] into WP and advances IP
 	f.IP += 2
 }
 
@@ -217,12 +215,6 @@ func XCHG(a, b *uint16) {
 	olda := *a
 	*a = *b
 	*b = olda
-}
-
-// load effective address
-// returns the uint16 at Memory[i]
-func (f *Forth) LEA(i uint16) uint16 {
-	return binary.BigEndian.Uint16(f.Memory[i:])
 }
 
 // PUSH is

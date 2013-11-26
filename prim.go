@@ -6,21 +6,55 @@ import (
 	"os"
 )
 
+/*
+CODE BYE    ( -- , exit Forth )
+      INT   020H                    \ return to DOS
+*/
 func (f *Forth) BYE() {
 	f.WP = 0xffff
 }
 
+/*
+CODE  !IO   ( -- )                  \ Initialize the serial I/O devices.
+      $NEXT
+*/
 // initialize IO
 func (f *Forth) B_IO() {
 	f.input = bufio.NewReader(os.Stdin)
 	f.output = bufio.NewWriter(os.Stdout)
+	f.NEXT()
 }
 
+/*
+CODE  EXECUTE     ( ca -- )         \ Execute the word at ca.
+      POP   BX
+      JMP   BX                      \ jump to the code address
+*/
 func (f *Forth) Execute() {
 	bx := f.Pop()
-	f.IP = bx
+	f.WP = f.WordPtr(bx)
 }
 
+/*
+CODE  ?RX   ( -- c T | F )          \ Return input character and true,
+                                    \ or a false if no input.
+      $CODE 3,'?RX',QRX
+      XOR   BX,BX                   \ BX=0 setup for false flag
+      MOV   DL,0FFH                 \ input command
+      MOV   AH,6                    \ MS-DOS Direct Console I/O
+      INT   021H
+      JZ    QRX3                    \ ?key ready
+      OR    AL,AL                   \ AL=0 if extended char
+      JNZ   QRX1                    \ ?extended character code
+      INT   021H
+      MOV   BH,AL                   \ extended code in msb
+      JMP   QRX2
+QRX1: MOV   BL,AL
+QRX2: PUSH  BX                      \ save character
+      MOV   BX,-1                   \ true flag
+QRX3: PUSH  BX
+      $NEXT
+*/
 // RX may need to be non-blocking receive
 // returns either false or char true
 func (f *Forth) Q_RX() {
@@ -33,8 +67,19 @@ func (f *Forth) Q_RX() {
 		f.Push(uint16(b))
 		f.Push(^uint16(0))
 	}
+	f.NEXT()
 }
 
+/*
+CODE  TX!   ( c -- )                \ Send character c to output device.
+      POP   DX                      \ char in DL
+      CMP   DL,0FFH                 \ 0FFH is interpreted as input
+      JNZ   TX1                     \ do NOT allow input
+      MOV   DL,32                   \ change to blank
+TX1:  MOV   AH,6                    \ MS-DOS Direct Console I/O
+      INT   021H                    \ display character
+      $NEXT
+*/
 // ( c -- ) send the character on the data stack
 func (f *Forth) B_TX() {
 	out := f.output.(*bufio.Writer)
@@ -44,22 +89,31 @@ func (f *Forth) B_TX() {
 	if err != nil {
 		fmt.Println(err)
 	}
+	f.NEXT()
 }
 
+/*
+CODE  doLIT ( -- w )                \ Push inline literal on data stack.
+      LODSW                         \ get the literal compiled in-line
+      PUSH  AX                      \ push literal on the stack
+      $NEXT                         \ execute next word after literal
+*/
 // for putting integer literals on the stack
 // for data not code
 func (f *Forth) doLIT() {
-	f.NEXT() // shortcut because next is just LODSW in this implementation and not the full
-	/* CODE NEXT:
-	   LODSW
-	   JMP AX
-	*/
-	f.Push(f.WP)
+	ax := f.WordPtr(f.IP)
+	f.Push(ax)
+	f.NEXT()
 }
 
-// doLIST is the converse of EXIT.  It pushes the return stack
-// address onto the data stack
 /*
+doLIST is the converse of EXIT.  It pushes the return stack
+address onto the data stack.
+
+It's called with CALL doLIST and CALL is a 8086 hack to get
+the address of the first word following doLIST on the stack:
+the 8086 thinks that is the next instruction.  What a hack?
+
 doLIST      ( a -- )                \ Run address list in a colon word.
       XCHG  BP,SP                   \ exchange pointers
       PUSH  SI                      \ push return stack
@@ -72,6 +126,7 @@ func (f *Forth) doLIST() {
 	f.Push(f.IP)
 	XCHG(&f.RP, &f.SP)
 	f.IP = f.Pop()
+	f.NEXT()
 }
 
 // the converse of doLIST. Ends the colon definition.
@@ -86,6 +141,7 @@ func (f *Forth) EXIT() {
 	XCHG(&f.RP, &f.SP)
 	f.IP = f.Pop()
 	XCHG(&f.RP, &f.SP)
+	f.NEXT()
 }
 
 /*
@@ -109,6 +165,7 @@ func (f *Forth) Next() {
 		f.RP = f.RP + 2
 		f.IP = f.IP + 2
 	}
+	f.NEXT()
 }
 
 /*
@@ -128,6 +185,7 @@ func (f *Forth) Q_branch() {
 	} else {
 		f.IP = f.IP + 2
 	}
+	f.NEXT()
 }
 
 /*
@@ -137,6 +195,7 @@ CODE  branch      ( -- )            \ Branch to an inline address.
 */
 func (f *Forth) Branch() {
 	f.IP = f.WordPtr(f.IP)
+	f.NEXT()
 }
 
 /*
@@ -149,6 +208,7 @@ func (f *Forth) Bang() {
 	a := f.Pop()
 	v := f.Pop()
 	f.SetWordPtr(a, v)
+	f.NEXT()
 }
 
 /*
@@ -161,6 +221,7 @@ func (f *Forth) At() {
 	bx := f.Pop()
 	v := f.WordPtr(bx)
 	f.Push(v)
+	f.NEXT()
 }
 
 /*
@@ -174,6 +235,7 @@ func (f *Forth) Cbang() {
 	bx := f.Pop()
 	ax := f.Pop()
 	f.SetBytePtr(bx, f.RegLower(ax))
+	f.NEXT()
 }
 
 /*
@@ -189,6 +251,7 @@ func (f *Forth) Cat() {
 	ax := f.WordPtr(bx)
 	ax = 0x00ff & ax
 	f.Push(ax)
+	f.NEXT()
 }
 
 /*
@@ -198,6 +261,7 @@ CODE  RP@   ( -- a )                \ Push current RP to data stack.
 */
 func (f *Forth) RPat() {
 	f.Push(f.RP)
+	f.NEXT()
 }
 
 /*
@@ -207,6 +271,7 @@ CODE  RP!   ( a -- )                \ Set the return stack pointer.
 */
 func (f *Forth) RPbang() {
 	f.RP = f.Pop()
+	f.NEXT()
 }
 
 /*
@@ -218,6 +283,7 @@ CODE  R>    ( -- w )                \ Pop return stack to data stack.
 func (f *Forth) Rfrom() {
 	f.Push(f.WordPtr(f.RP))
 	f.RP = f.RP + 2
+	f.NEXT()
 }
 
 /*
@@ -227,6 +293,7 @@ CODE  R@    ( -- w )                \ Copy top of return stack to data stack.
 */
 func (f *Forth) Rat() {
 	f.Push(f.WordPtr(f.RP))
+	f.NEXT()
 }
 
 /*
@@ -238,6 +305,7 @@ CODE  >R    ( w -- )                \ Push data stack to return stack.
 func (f *Forth) Tor() {
 	f.RP = f.RP - 2
 	f.SetWordPtr(f.RP, f.Pop())
+	f.NEXT()
 }
 
 /*
@@ -247,6 +315,7 @@ CODE  DROP  ( w -- )                \ Discard top stack item.
 */
 func (f *Forth) Drop() {
 	f.SP = f.SP + 2
+	f.NEXT()
 }
 
 /*
@@ -257,6 +326,7 @@ CODE  DUP   ( w -- w w )            \ Duplicate the top stack item.
 */
 func (f *Forth) Dup() {
 	f.Push(f.WordPtr(f.SP))
+	f.NEXT()
 }
 
 /*
@@ -272,6 +342,7 @@ func (f *Forth) Swap() {
 	ax := f.Pop()
 	f.Push(bx)
 	f.Push(ax)
+	f.NEXT()
 }
 
 /*
@@ -283,6 +354,7 @@ CODE  OVER  ( w1 w2 -- w1 w2 w1 )   \ Copy second stack item to top.
 func (f *Forth) Over() {
 	bx := f.SP + 2
 	f.Push(f.WordPtr(bx))
+	f.NEXT()
 }
 
 /*
@@ -294,6 +366,7 @@ CODE  SP@   ( -- a )                \ Push the current data stack pointer.
 func (f *Forth) Sp_at() {
 	bx := f.SP
 	f.Push(bx)
+	f.NEXT()
 }
 
 /*
@@ -303,6 +376,7 @@ CODE  SP!   ( a -- )                \ Set the data stack pointer.
 */
 func (f *Forth) Sp_bang() {
 	f.SP = f.Pop()
+	f.NEXT()
 }
 
 /*
@@ -319,6 +393,7 @@ func (f *Forth) Zless() {
 	} else {
 		f.Push(0xffff)
 	}
+	f.NEXT()
 }
 
 /*
@@ -334,6 +409,7 @@ func (f *Forth) And() {
 	b := f.Pop()
 	r := a & b
 	f.Push(r)
+	f.NEXT()
 }
 
 /*
@@ -349,6 +425,7 @@ func (f *Forth) Or() {
 	b := f.Pop()
 	r := a | b
 	f.Push(r)
+	f.NEXT()
 }
 
 /*
@@ -364,6 +441,7 @@ func (f *Forth) Xor() {
 	b := f.Pop()
 	r := a ^ b
 	f.Push(r)
+	f.NEXT()
 }
 
 /*
@@ -390,4 +468,5 @@ func (f *Forth) UMplus() {
 	}
 	f.Push(r)
 	f.Push(cf)
+	f.NEXT()
 }
