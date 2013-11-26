@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"fmt"
     "strings"
+    "errors"
 )
 
 /*
@@ -156,7 +157,8 @@ func (f *Forth) AddPrim(word string, m fn) {
 	f.SetWordPtr(addr, f.prims)
 }
 
-func (f *Forth) AddWord(cdef string) {
+func (f *Forth) AddWord(cdef string) (e error) {
+    e = nil
     all := strings.Fields(cdef)
     f.prims = f.prims + 1
     addr := CODEE + (2 * (f.prims -1))
@@ -165,14 +167,24 @@ func (f *Forth) AddWord(cdef string) {
     iwords := append([]string{"call", ":"}, all[2:]... )
     fmt.Println(iwords)
     for i, word := range iwords {
-        wa := f.Addr(word)
+        wa, err := f.Addr(word)
+        if err != nil {
+            e = err
+            return
+        }
         f.SetWordPtr(addr + uint16(i*2), wa)
         fmt.Println(i,word,wa)
     }
+    return
 }
 
-func (f *Forth) Addr(word string) uint16 {
-	return f.prim2addr[word]
+func (f *Forth) Addr(word string) (res uint16, err error) {
+    err = nil
+	res, ok := f.prim2addr[word]
+    if !ok {
+        err = errors.New(fmt.Sprintf("Address for word %s not found", word))
+    }
+    return
 }
 
 func (f *Forth) CallFn(word string) {

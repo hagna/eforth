@@ -89,7 +89,7 @@ func TestMorePrim(t *testing.T) {
 	f.prims = 0
 	f.AddPrim("BYE", func() {})
 	f.AddPrim("JK", func() {})
-	a := f.Addr("JK")
+	a, _ := f.Addr("JK")
 	if a != CODEE+2 {
 		t.Fatal("didn't add new code in memory")
 	}
@@ -128,8 +128,9 @@ func TestAddPrimAddr(t *testing.T) {
 	f.prims = 0
 	a := func() {}
 	f.AddPrim("BYE", a)
-	if f.Addr("BYE") != CODEE {
-		t.Fatal("address of BYE ought to be", CODEE, "and not ", f.Addr("BYE"))
+    aa, _ := f.Addr("BYE")
+	if aa != CODEE {
+		t.Fatal("address of BYE ought to be", CODEE, "and not ", aa)
 	}
 }
 
@@ -137,8 +138,9 @@ func TestAddPrimAddr(t *testing.T) {
 func TestAddColon(t *testing.T) {
     f := NewForth()
     f.AddWord(": nop ;")
-    if f.Addr("nop") == 0 {
-        t.Fatal("nop should have an address", f.Addr("nop"))
+    aa, _ := f.Addr("nop")
+    if aa == 0 {
+        t.Fatal("nop should have an address", aa)
     }
 }
 
@@ -159,12 +161,22 @@ func Uint16sEqual(a, b []uint16) bool {
 func TestAddColonLst(t *testing.T) {
     f := NewForth()
     f.AddWord(": nop ;")
-    good := []uint16{f.Addr("call"), f.Addr(":"), f.Addr(";")}
-    start := f.Addr("nop")
+    good := []uint16{}
+    for _, v := range []string{"call", ":", ";"} {
+        aa, _ := f.Addr(v)
+        good = append(good, aa)
+    }
+    start, _ := f.Addr("nop")
     cmp := []uint16{f.WordPtr(start), f.WordPtr(start+2), f.WordPtr(start+4)}
     if !Uint16sEqual(cmp, good) {
         t.Fatal("code of nop wasn't", good, "but was", cmp)
     }
 }
 
-
+func BadAddr(t *testing.T) {
+    f := NewForth()
+    _, err := f.Addr("noexiste")
+    if err == nil {
+        t.Fatal("should have thrown an error about a nonexistant word")
+    }
+}
