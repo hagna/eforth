@@ -173,6 +173,64 @@ func TestAddColonLst(t *testing.T) {
     }
 }
 
+// ought to be able to build definitions on others
+func TestAddWords(t *testing.T) {
+    f := NewForth()
+    f.AddWord(`: nop ;`)
+    f.AddWord(`: bar nop ;`)
+    good := []uint16{}
+    for _, v := range []string{"call", ":", "nop", ";"} {
+        aa, _ := f.Addr(v)
+        good = append(good, aa)
+    }
+    start, _ := f.Addr("bar")
+    cmp := []uint16{f.WordPtr(start), f.WordPtr(start+2), f.WordPtr(start+4), f.WordPtr(start+6)}
+    if !Uint16sEqual(cmp, good) {
+        t.Fatal("code of nop wasn't", good, "but was", cmp)
+    }
+    anop, _ := f.Addr("nop")
+    abar, _ := f.Addr("bar")
+    if abar - anop != 6 {
+        t.Fatal("addresses may overlap nop is at", anop, "and bar is at", abar)
+    }
+
+}
+
+// ought to include newlines without messing up the code
+func TestAddWordNL(t *testing.T) {
+    f := NewForth()
+    f.AddWord(`: nop ;`)
+    f.AddWord(`: bar 
+nop 
+;`)
+    good := []uint16{}
+    for _, v := range []string{"call", ":", "nop", ";"} {
+        aa, _ := f.Addr(v)
+        good = append(good, aa)
+    }
+    start, _ := f.Addr("bar")
+    cmp := []uint16{f.WordPtr(start), f.WordPtr(start+2), f.WordPtr(start+4), f.WordPtr(start+6)}
+    if !Uint16sEqual(cmp, good) {
+        t.Fatal("code of nop wasn't", good, "but was", cmp)
+    }
+}
+
+// ignore comments for now
+func TestAddWordComments(t *testing.T) {
+    f := NewForth()
+    f.AddWord(": nop ( -- ) ;")
+    good := []uint16{}
+    for _, v := range []string{"call", ":", ";"} {
+        aa, _ := f.Addr(v)
+        good = append(good, aa)
+    }
+    start, _ := f.Addr("nop")
+    cmp := []uint16{f.WordPtr(start), f.WordPtr(start+2), f.WordPtr(start+4)}
+    if !Uint16sEqual(cmp, good) {
+        t.Fatal("code of nop wasn't", good, "but was", cmp)
+    }
+}
+
 func BadAddr(t *testing.T) {
     f := NewForth()
     _, err := f.Addr("noexiste")

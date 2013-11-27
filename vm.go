@@ -126,25 +126,27 @@ func NewForth() *Forth {
 		{"c!", f.Cbang},
 		{"rp@", f.RPat},
 		{"rp!", f.RPbang},
-		{"r>", f.Rfrom},
+		{"R>", f.Rfrom},
 		{"r@", f.Rat},
 		{">r", f.Tor},
-		{"drop", f.Drop},
-		{"dup", f.Dup},
-		{"swap", f.Swap},
-		{"over", f.Over},
-		{"sp@", f.Sp_at},
-		{"sp!", f.Sp_bang},
+		{"DROP", f.Drop},
+		{"DUP", f.Dup},
+		{"SWAP", f.Swap},
+		{"OVER", f.Over},
+		{"SP@", f.Sp_at},
+		{"SP!", f.Sp_bang},
 		{"0<", f.Zless},
-		{"and", f.And},
-		{"or", f.Or},
-		{"xor", f.Xor},
-		{"um+", f.UMplus},
+		{"AND", f.And},
+		{"OR", f.Or},
+		{"XOR", f.Xor},
+		{"UM+", f.UMplus},
 	}
+    f.prim2addr["UPP"] = UPP
 	for _, v := range words {
 		f.AddPrim(v.word, v.m)
 	}
 	fmt.Println("NewForth()")
+    f.ColonDefs()
 	return f
 }
 
@@ -157,10 +159,21 @@ func (f *Forth) AddPrim(word string, m fn) {
 	f.SetWordPtr(addr, f.prims)
 }
 
+func (f *Forth) RemoveComments(a string) (b string) {
+    b = a
+    i := strings.Index(a, "(")
+    if i == -1 {
+        return
+    } else {
+        j := strings.Index(a, ")")
+        b = a[:i] + a[j+1:]
+    }
+    return
+}
+
 func (f *Forth) AddWord(cdef string) (e error) {
     e = nil
-    all := strings.Fields(cdef)
-    f.prims = f.prims + 1
+    all := strings.Fields(f.RemoveComments(cdef))
     addr := CODEE + (2 * (f.prims -1))
     name := all[1]
     f.prim2addr[name] = addr
@@ -173,7 +186,8 @@ func (f *Forth) AddWord(cdef string) (e error) {
             return
         }
         f.SetWordPtr(addr + uint16(i*2), wa)
-        fmt.Println(i,word,wa)
+        f.prims = f.prims + 1
+        fmt.Printf("%x: %x %s\n", addr+uint16(i*2), wa, word)
     }
     return
 }
@@ -182,7 +196,7 @@ func (f *Forth) Addr(word string) (res uint16, err error) {
     err = nil
 	res, ok := f.prim2addr[word]
     if !ok {
-        err = errors.New(fmt.Sprintf("Address for word %s not found", word))
+        err = errors.New(fmt.Sprintf(`Address for word "%s" not found`, word))
     }
     return
 }
