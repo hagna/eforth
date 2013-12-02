@@ -84,51 +84,54 @@ type Forth struct {
 	prim2addr  map[string]uint16
 	prim2func  map[string]fn
 	pcode2word map[uint16]string
+
+	LAST uint16 // last name in name dictionary
+	NP   uint16 // bottom of name dictionary
 }
 
 type fn func()
 
 func wordptr(mem []byte, reg uint16) (res uint16) {
-	res = binary.BigEndian.Uint16(mem[reg:])
+	res = binary.LittleEndian.Uint16(mem[reg:])
 	return
 }
 
 func setwordptr(mem []byte, reg, value uint16) {
-	binary.BigEndian.PutUint16(mem[reg:], value)
+	binary.LittleEndian.PutUint16(mem[reg:], value)
 }
 
 func NewForth() *Forth {
 	f := &Forth{SP: SPP, RP: RPP,
 		prim2addr:  make(map[string]uint16),
 		prim2func:  make(map[string]fn),
-		pcode2word: make(map[uint16]string)}
+		pcode2word: make(map[uint16]string),
+		NP:         NAMEE,
+		LAST:       0}
+	fmt.Printf("NAMEE is %x\n", NAMEE)
 	words := []struct {
 		word string
 		m    fn
 	}{
-        {"call", f.Call},
+		{"BYE", f.BYE},
+		{"CALL", f.Call},
 		{":", f.doLIST},
-		{"!io", f.B_IO},
-		{"bye", f.BYE},
-		{"?rx", f.Q_RX},
-		{"!tx", f.B_TX},
-		{"execute", f.Execute},
+		{"!IO", f.B_IO},
+		{"?RX", f.Q_RX},
+		{"!TX", f.B_TX},
+		{"EXECUTE", f.Execute},
 		{"doLIT", f.doLIT},
 		{";", f.EXIT},
-		{"bye", f.BYE},
-		{"?rx", f.Q_RX},
-		{"!tx", f.B_TX},
-		{"next", f.Next},
-		{"?branch", f.Q_branch},
-		{"branch", f.Branch},
+		{"NEXT", f.Next},
+		{"?BRANCH", f.Q_branch},
+		{"BRANCH", f.Branch},
 		{"!", f.Bang},
 		{"@", f.At},
-		{"c!", f.Cbang},
-		{"rp@", f.RPat},
-		{"rp!", f.RPbang},
+		{"C!", f.Cbang},
+		{"RP@", f.RPat},
+		{"RP!", f.RPbang},
 		{"R>", f.Rfrom},
-		{"r@", f.Rat},
-		{">r", f.Tor},
+		{"R@", f.Rat},
+		{">R", f.Tor},
 		{"DROP", f.Drop},
 		{"DUP", f.Dup},
 		{"SWAP", f.Swap},
@@ -141,13 +144,29 @@ func NewForth() *Forth {
 		{"XOR", f.Xor},
 		{"UM+", f.UMplus},
 	}
-    f.prim2addr["UPP"] = UPP
+	f.prim2addr["UPP"] = UPP
 	for _, v := range words {
 		f.AddPrim(v.word, v.m)
 	}
 	fmt.Println("NewForth()")
-    f.ColonDefs()
+	f.ColonDefs()
 	return f
+}
+
+func (f *Forth) AddName(word string, addr uint16) {
+	fmt.Println("AddName(", word, ", ", addr, ")")
+	_len := uint16(len(word) / CELLL)  // rounded down cell count
+	f.NP = f.NP - ((_len + 3) * CELLL) // new header on cell boundary
+	i := f.NP
+	fmt.Printf("writing to memory address %x\n", i)
+	f.SetWordPtr(i, addr)
+	f.SetWordPtr(i+2, f.LAST)
+	f.LAST = uint16(i + 4)
+	f.Memory[f.LAST] = byte(len(word))
+	for j, c := range word {
+		f.Memory[int(i)+5+j] = byte(c)
+	}
+
 }
 
 func (f *Forth) AddPrim(word string, m fn) {
@@ -156,54 +175,60 @@ func (f *Forth) AddPrim(word string, m fn) {
 	f.prim2addr[word] = addr
 	f.prim2func[word] = m
 	f.pcode2word[f.prims] = word
+	fmt.Printf("%x is \"%s\"\n", f.prims, word)
 	f.SetWordPtr(addr, f.prims)
+	f.AddName(word, addr)
 }
 
 func (f *Forth) RemoveComments(a string) (b string) {
-    b = a
-    i := strings.Index(a, "(")
-    if i == -1 {
-        return
-    } else {
-        j := strings.Index(a, ")")
-        b = a[:i] + a[j+1:]
-    }
-    return
+	b = a
+	i := strings.Index(a, "(")
+	if i == -1 {
+		return
+	} else {
+		j := strings.Index(a, ")")
+		b = a[:i] + a[j+1:]
+	}
+	return
 }
 
 func (f *Forth) AddWord(cdef string) (e error) {
-    e = nil
-    all := strings.Fields(f.RemoveComments(cdef))
-    addr := CODEE + (2 * (f.prims -1))
-    name := all[1]
-    f.prim2addr[name] = addr
-    iwords := append([]string{"call", ":"}, all[2:]... )
-    fmt.Println(iwords)
-    for i, word := range iwords {
-        wa, err := f.Addr(word)
-        if err != nil {
-            e = err
-            return
-        }
-        f.SetWordPtr(addr + uint16(i*2), wa)
-        f.prims = f.prims + 1
-        fmt.Printf("%x: %x %s\n", addr+uint16(i*2), wa, word)
-    }
-    return
+	f.prims = f.prims + 1
+	e = nil
+	all := strings.Fields(f.RemoveComments(cdef))
+	addr := CODEE + (2 * (f.prims - 1))
+	name := all[1]
+	f.prim2addr[name] = addr
+	iwords := append([]string{"CALL", ":"}, all[2:]...)
+	fmt.Println(iwords)
+	f.SetWordPtr(addr, 2) // CALL is 2
+	fmt.Printf("%x: %x %s\n", addr, 2, "CALL")
+	for _, word := range iwords[1:] {
+		wa, err := f.Addr(word)
+		if err != nil {
+			e = err
+			return
+		}
+		addr = addr + 2
+		f.SetWordPtr(addr, wa)
+		f.prims = f.prims + 1
+		fmt.Printf("%x: %x %s\n", addr, wa, word)
+	}
+	return
 }
 
 func (f *Forth) Addr(word string) (res uint16, err error) {
-    err = nil
+	err = nil
 	res, ok := f.prim2addr[word]
-    if !ok {
-        err = errors.New(fmt.Sprintf(`Address for word "%s" not found`, word))
-    }
-    return
+	if !ok {
+		err = errors.New(fmt.Sprintf(`Address for word "%s" not found`, word))
+	}
+	return
 }
 
 func (f *Forth) CallFn(word string) {
 	m := f.prim2func[word]
-	fmt.Println("m is", m)
+	fmt.Printf("CallFn %v \"%s\"\n", m, word)
 	m()
 }
 
@@ -215,12 +240,15 @@ func (f *Forth) Frompcode(pcode uint16) (res string) {
 // this simulates the von neuman machine or processor
 func (f *Forth) Main() {
 	f.B_IO()
+	fmt.Println("---------Main----------")
 	var pcode uint16
 	var word string
 inf:
 	for {
+		// simulate JMP to f.WP
 		pcode = f.WordPtr(f.WP)
 		word = f.Frompcode(pcode)
+		fmt.Printf("WP %x IP %x pcode %x word \"%s\"\n", f.WP, f.IP, pcode, word)
 		f.CallFn(word)
 		if f.IP == 0xffff { // for BYE
 			break inf
@@ -245,12 +273,13 @@ func (f *Forth) SetBytePtr(i uint16, v byte) {
 	f.Memory[i] = v
 }
 
-// NEXT ought to be a macro it sets WP to the next instruction
-// and increments the instruction pointer
-func (f *Forth) NEXT() {
-	f.WP = f.IP // f.WordPtr(f.IP) // same as LODSW puts [IP] into WP and advances IP
+/*
+lodsw
+jmp ax
+*/
+func (f *Forth) _next() {
+	f.WP = f.WordPtr(f.IP)
 	f.IP += 2
-	fmt.Println("IP is", f.IP, "and WP is", f.WP)
 }
 
 // swap register values
@@ -266,14 +295,14 @@ func XCHG(a, b *uint16) {
 func (f *Forth) Push(v uint16) {
 	fmt.Println("f.SP is", f.SP)
 	f.SP = f.SP - 2
-	binary.BigEndian.PutUint16(f.Memory[f.SP:], v)
+	binary.LittleEndian.PutUint16(f.Memory[f.SP:], v)
 }
 
 // POP is
 // operand = [SP]
 // SP = SP + 2
 func (f *Forth) Pop() uint16 {
-	res := binary.BigEndian.Uint16(f.Memory[f.SP:])
+	res := binary.LittleEndian.Uint16(f.Memory[f.SP:])
 	f.SP = f.SP + 2
 	return res
 }

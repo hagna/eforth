@@ -116,7 +116,7 @@ func TestAddPrimCall2(t *testing.T) {
 	f := NewForth()
 	f.IP = 0
 	o := f.IP
-	f.AddPrim("NEXT", f.NEXT)
+	f.AddPrim("NEXT", f._next)
 	f.CallFn("NEXT")
 	o2 := f.IP
 	if o2 <= o {
@@ -157,85 +157,137 @@ func Uint16sEqual(a, b []uint16) bool {
 	return true
 }
 
-
 // A colon word also ought to go in the code dictionary correctly
 func TestAddColonLst(t *testing.T) {
-    f := NewForth()
-    f.AddWord(": nop ;")
-    good := []uint16{}
-    for _, v := range []string{"call", ":", ";"} {
-        aa, _ := f.Addr(v)
-        good = append(good, aa)
-    }
-    start, _ := f.Addr("nop")
-    cmp := []uint16{f.WordPtr(start), f.WordPtr(start+2), f.WordPtr(start+4)}
-    if !Uint16sEqual(cmp, good) {
-        t.Fatal("code of nop wasn't", good, "but was", cmp)
-    }
+	f := NewForth()
+	f.AddWord(": nop ;")
+	good := []uint16{}
+	for _, v := range []string{"CALL", ":", ";"} {
+		aa, _ := f.Addr(v)
+		good = append(good, aa)
+	}
+	good[0] = 2
+	start, _ := f.Addr("nop")
+	cmp := []uint16{f.WordPtr(start), f.WordPtr(start + 2), f.WordPtr(start + 4)}
+	if !Uint16sEqual(cmp, good) {
+		t.Fatal("code of nop wasn't", good, "but was", cmp)
+	}
 }
 
 // ought to be able to build definitions on others
 func TestAddWords(t *testing.T) {
-    f := NewForth()
-    f.AddWord(`: nop ;`)
-    f.AddWord(`: bar nop ;`)
-    good := []uint16{}
-    for _, v := range []string{"call", ":", "nop", ";"} {
-        aa, _ := f.Addr(v)
-        good = append(good, aa)
-    }
-    start, _ := f.Addr("bar")
-    cmp := []uint16{f.WordPtr(start), f.WordPtr(start+2), f.WordPtr(start+4), f.WordPtr(start+6)}
-    if !Uint16sEqual(cmp, good) {
-        t.Fatal("code of nop wasn't", good, "but was", cmp)
-    }
-    anop, _ := f.Addr("nop")
-    abar, _ := f.Addr("bar")
-    if abar - anop != 6 {
-        t.Fatal("addresses may overlap nop is at", anop, "and bar is at", abar)
-    }
+	f := NewForth()
+	f.AddWord(`: nop ;`)
+	f.AddWord(`: bar nop ;`)
+	good := []uint16{}
+	for _, v := range []string{"CALL", ":", "nop", ";"} {
+		aa, _ := f.Addr(v)
+		good = append(good, aa)
+	}
+	good[0] = 2
+	start, _ := f.Addr("bar")
+	cmp := []uint16{f.WordPtr(start), f.WordPtr(start + 2), f.WordPtr(start + 4), f.WordPtr(start + 6)}
+	if !Uint16sEqual(cmp, good) {
+		t.Fatal("code of nop wasn't", good, "but was", cmp)
+	}
+	anop, _ := f.Addr("nop")
+	abar, _ := f.Addr("bar")
+	if abar-anop != 6 {
+		t.Fatal("addresses may overlap nop is at", anop, "and bar is at", abar)
+	}
 
 }
 
 // ought to include newlines without messing up the code
 func TestAddWordNL(t *testing.T) {
-    f := NewForth()
-    f.AddWord(`: nop ;`)
-    f.AddWord(`: bar 
+	f := NewForth()
+	f.AddWord(`: nop ;`)
+	f.AddWord(`: bar 
 nop 
 ;`)
-    good := []uint16{}
-    for _, v := range []string{"call", ":", "nop", ";"} {
-        aa, _ := f.Addr(v)
-        good = append(good, aa)
-    }
-    start, _ := f.Addr("bar")
-    cmp := []uint16{f.WordPtr(start), f.WordPtr(start+2), f.WordPtr(start+4), f.WordPtr(start+6)}
-    if !Uint16sEqual(cmp, good) {
-        t.Fatal("code of nop wasn't", good, "but was", cmp)
-    }
+	good := []uint16{}
+	for _, v := range []string{"CALL", ":", "nop", ";"} {
+		aa, _ := f.Addr(v)
+		good = append(good, aa)
+	}
+	good[0] = 2
+	start, _ := f.Addr("bar")
+	cmp := []uint16{f.WordPtr(start), f.WordPtr(start + 2), f.WordPtr(start + 4), f.WordPtr(start + 6)}
+	if !Uint16sEqual(cmp, good) {
+		t.Fatal("code of nop wasn't", good, "but was", cmp)
+	}
 }
 
 // ignore comments for now
 func TestAddWordComments(t *testing.T) {
-    f := NewForth()
-    f.AddWord(": nop ( -- ) ;")
-    good := []uint16{}
-    for _, v := range []string{"call", ":", ";"} {
-        aa, _ := f.Addr(v)
-        good = append(good, aa)
-    }
-    start, _ := f.Addr("nop")
-    cmp := []uint16{f.WordPtr(start), f.WordPtr(start+2), f.WordPtr(start+4)}
-    if !Uint16sEqual(cmp, good) {
-        t.Fatal("code of nop wasn't", good, "but was", cmp)
-    }
+	f := NewForth()
+	f.AddWord(": nop ( -- ) ;")
+	good := []uint16{}
+	for _, v := range []string{"CALL", ":", ";"} {
+		aa, _ := f.Addr(v)
+		good = append(good, aa)
+	}
+	good[0] = 2
+	start, _ := f.Addr("nop")
+	cmp := []uint16{f.WordPtr(start), f.WordPtr(start + 2), f.WordPtr(start + 4)}
+	if !Uint16sEqual(cmp, good) {
+		t.Fatal("code of nop wasn't", good, "but was", cmp)
+	}
 }
 
 func BadAddr(t *testing.T) {
-    f := NewForth()
-    _, err := f.Addr("noexiste")
-    if err == nil {
-        t.Fatal("should have thrown an error about a nonexistant word")
-    }
+	f := NewForth()
+	_, err := f.Addr("noexiste")
+	if err == nil {
+		t.Fatal("should have thrown an error about a nonexistant word")
+	}
+}
+
+/*
+	Test the inner interpreter as they call it.  It's supposed to use NEXT doLIST
+	and EXIT to loop through the high level forth till it finds primitives or
+	machine code code words instead of colon words to execute.
+*/
+func TestMain(t *testing.T) {
+	f := NewForth()
+	called := false
+	f.AddPrim("BYE", func() {
+		fmt.Println("hello from the BYE primitive")
+		called = true
+		f.BYE()
+	})
+	f.AddWord(": nop ;")
+	f.AddWord(": C BYE ;")
+	f.AddWord(": B C ;")
+	f.AddWord(": A nop B ;")
+	a, err := f.Addr("A")
+	fmt.Printf("Addr of doit is %x\n", a)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.SetWordPtr(COLDD, a)
+	f.IP = COLDD
+	f._next()
+	f.Main()
+	if !called {
+		t.Fatal("Didn't call BYE function")
+	}
+}
+
+/*
+   Name dictionary entries or records or headers in order of my favorite descriptions
+   contain:
+       addr of code word
+       link to previous name
+       len prefixed string
+   They start on CELLL boundaries 16 bits or 2 bytes as of this writing
+*/
+func TestNamedict(t *testing.T) {
+	f := NewForth()
+	s := f.Memory[NAMEE-8 : NAMEE]
+	fmt.Println("range is ", NAMEE-8, "to", NAMEE)
+	good := []byte{0x80, 0x1, 0, 0, 3, 0x42, 0x59, 0x45} // ASSUME BYE is the first primitive
+	if !bytes.Equal(s, good) {
+		t.Fatal("Wrong memory was", s, "and it should be", good)
+	}
 }

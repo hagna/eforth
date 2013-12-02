@@ -11,10 +11,10 @@ import (
 func TestDoLIST(t *testing.T) {
 	f := NewForth()
 	f.IP = 99
-	binary.BigEndian.PutUint16(f.Memory[23:], 0xdead)
+	binary.LittleEndian.PutUint16(f.Memory[23:], 0xdead)
 	f.Push(23) // this is the return address
 	f.doLIST()
-	b := binary.BigEndian.Uint16(f.Memory[f.RP:])
+	b := binary.LittleEndian.Uint16(f.Memory[f.RP:])
 	if b != 99 {
 		t.Fatal("b should be 99 and not", b)
 	}
@@ -54,7 +54,7 @@ func TestDoList(t *testing.T) {
 	f := NewForth()
 	f.B_IO()
 	f.IP = 30
-	binary.BigEndian.PutUint16(f.Memory[f.IP:], 0xdead)
+	binary.LittleEndian.PutUint16(f.Memory[f.IP:], 0xdead)
 	f.doLIT()
 	tos := f.Pop()
 	if tos != 0xdead {

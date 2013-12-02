@@ -11,18 +11,18 @@ CODE BYE    ( -- , exit Forth )
       INT   020H                    \ return to DOS
 */
 func (f *Forth) BYE() {
-	f.WP = 0xffff
+	f.IP = 0xffff
 }
 
 /*
 CODE  !IO   ( -- )                  \ Initialize the serial I/O devices.
-      $NEXT
+      $_next
 */
 // initialize IO
 func (f *Forth) B_IO() {
 	f.input = bufio.NewReader(os.Stdin)
 	f.output = bufio.NewWriter(os.Stdout)
-	f.NEXT()
+	//f._next()
 }
 
 /*
@@ -53,7 +53,7 @@ QRX1: MOV   BL,AL
 QRX2: PUSH  BX                      \ save character
       MOV   BX,-1                   \ true flag
 QRX3: PUSH  BX
-      $NEXT
+      $_next
 */
 // RX may need to be non-blocking receive
 // returns either false or char true
@@ -67,7 +67,7 @@ func (f *Forth) Q_RX() {
 		f.Push(uint16(b))
 		f.Push(^uint16(0))
 	}
-	f.NEXT()
+	f._next()
 }
 
 /*
@@ -78,7 +78,7 @@ CODE  TX!   ( c -- )                \ Send character c to output device.
       MOV   DL,32                   \ change to blank
 TX1:  MOV   AH,6                    \ MS-DOS Direct Console I/O
       INT   021H                    \ display character
-      $NEXT
+      $_next
 */
 // ( c -- ) send the character on the data stack
 func (f *Forth) B_TX() {
@@ -89,21 +89,21 @@ func (f *Forth) B_TX() {
 	if err != nil {
 		fmt.Println(err)
 	}
-	f.NEXT()
+	f._next()
 }
 
 /*
 CODE  doLIT ( -- w )                \ Push inline literal on data stack.
       LODSW                         \ get the literal compiled in-line
       PUSH  AX                      \ push literal on the stack
-      $NEXT                         \ execute next word after literal
+      $_next                         \ execute next word after literal
 */
 // for putting integer literals on the stack
 // for data not code
 func (f *Forth) doLIT() {
 	ax := f.WordPtr(f.IP)
 	f.Push(ax)
-	f.NEXT()
+	f._next()
 }
 
 /*
@@ -119,25 +119,27 @@ doLIST      ( a -- )                \ Run address list in a colon word.
       PUSH  SI                      \ push return stack
       XCHG  BP,SP                   \ restore the pointers
       POP   SI                      \ new list address
-      $NEXT
+      $_next
 */
 func (f *Forth) doLIST() {
 	XCHG(&f.RP, &f.SP)
 	f.Push(f.IP)
 	XCHG(&f.RP, &f.SP)
 	f.IP = f.Pop()
-	f.NEXT()
+	f._next()
 }
 
 /*
-    Call puts the addresss of the first word after doLIST on the stack
-    and then then calls the primitive code for the word following itself
+   Call puts the addresss of the first word after doLIST on the stack
+   and then then calls the primitive code for the word following itself
 */
 func (f *Forth) Call() {
-    f.Push(f.WP + 4)
-    callme := f.WordPtr(f.WP+2)
-    word := f.Frompcode(callme)
-    f.CallFn(word) // ought to be doLIST unless we use native Call for something else
+	fmt.Printf("f.WP %x -> %x (should be call)\n", f.WP, f.WordPtr(f.WP))
+	f.Push(f.WP + 4)
+	callme := f.WordPtr(f.WordPtr(f.WP + 2)) // or maybe it ought to be pcode
+	word := f.Frompcode(callme)
+	fmt.Printf("Call: callme %x word \"%s\"\n", callme, word)
+	f.CallFn(word) // ought to be doLIST unless we use native Call for something else
 }
 
 // the converse of doLIST. Ends the colon definition.
@@ -146,25 +148,25 @@ CODE  EXIT                          \ Terminate a colon definition.
       XCHG  BP,SP                   \ exchange pointers
       POP   SI                      \ pop return stack
       XCHG  BP,SP                   \ restore the pointers
-      $NEXT
+      $_next
 */
 func (f *Forth) EXIT() {
 	XCHG(&f.RP, &f.SP)
 	f.IP = f.Pop()
 	XCHG(&f.RP, &f.SP)
-	f.NEXT()
+	f._next()
 }
 
 /*
 CODE  next  ( -- )                  \ Decrement index and exit loop
                                     \ if index is less than 0.
       SUB   WORD PTR [BP],1         \ decrement the index
-      JC    NEXT1                   \ ?decrement below 0
+      JC    _next1                   \ ?decrement below 0
       MOV   SI,0[SI]                \ no, continue loop
-      $NEXT
-NEXT1:ADD   BP,2                    \ yes, pop the index
+      $_next
+_next1:ADD   BP,2                    \ yes, pop the index
       ADD   SI,2                    \ exit loop
-      $NEXT
+      $_next
 */
 func (f *Forth) Next() {
 	v := f.WordPtr(f.RP)
@@ -176,7 +178,7 @@ func (f *Forth) Next() {
 		f.RP = f.RP + 2
 		f.IP = f.IP + 2
 	}
-	f.NEXT()
+	f._next()
 }
 
 /*
@@ -185,9 +187,9 @@ CODE  ?branch     ( f -- )          \ Branch if flag is zero.
       OR    BX,BX                   \ ?flag=0
       JZ    BRAN1                   \ yes, so branch
       ADD   SI,2                    \ point IP to next cell
-      $NEXT
+      $_next
 BRAN1:MOV   SI,0[SI]                \ IP:=(IP), jump to new address
-      $NEXT
+      $_next
 */
 func (f *Forth) Q_branch() {
 	bx := f.Pop()
@@ -196,43 +198,43 @@ func (f *Forth) Q_branch() {
 	} else {
 		f.IP = f.IP + 2
 	}
-	f.NEXT()
+	f._next()
 }
 
 /*
 CODE  branch      ( -- )            \ Branch to an inline address.
       MOV   SI,0[SI]                \ jump to new address unconditionally
-      $NEXT
+      $_next
 */
 func (f *Forth) Branch() {
 	f.IP = f.WordPtr(f.IP)
-	f.NEXT()
+	f._next()
 }
 
 /*
 CODE  !     ( w a -- )              \ Pop the data stack to memory.
       POP   BX                      \ get address from tos
       POP   0[BX]                   \ store data to that adddress
-      $NEXT
+      $_next
 */
 func (f *Forth) Bang() {
 	a := f.Pop()
 	v := f.Pop()
 	f.SetWordPtr(a, v)
-	f.NEXT()
+	f._next()
 }
 
 /*
 CODE  @     ( a -- w )              \ Push memory location to data stack.
       POP   BX                      \ get address
       PUSH  0[BX]                   \ fetch data
-      $NEXT
+      $_next
 */
 func (f *Forth) At() {
 	bx := f.Pop()
 	v := f.WordPtr(bx)
 	f.Push(v)
-	f.NEXT()
+	f._next()
 }
 
 /*
@@ -240,13 +242,13 @@ CODE  C!    ( c b -- )              \ Pop data stack to byte memory.
       POP   BX                      \ get address
       POP   AX                      \ get data in a cell
       MOV   0[BX],AL                \ store one byte
-      $NEXT
+      $_next
 */
 func (f *Forth) Cbang() {
 	bx := f.Pop()
 	ax := f.Pop()
 	f.SetBytePtr(bx, f.RegLower(ax))
-	f.NEXT()
+	f._next()
 }
 
 /*
@@ -255,89 +257,89 @@ CODE  C@    ( b -- c )              \ Push byte memory content on data stack.
       XOR   AX,AX                   \ AX=0 zero the hi byte
       MOV   AL,0[BX]                \ get low byte
       PUSH  AX                      \ push on stack
-      $NEXT
+      $_next
 */
 func (f *Forth) Cat() {
 	bx := f.Pop()
 	ax := f.WordPtr(bx)
 	ax = 0x00ff & ax
 	f.Push(ax)
-	f.NEXT()
+	f._next()
 }
 
 /*
 CODE  RP@   ( -- a )                \ Push current RP to data stack.
       PUSH  BP                      \ copy address to return stack
-      $NEXT                         \ pointer register BP
+      $_next                         \ pointer register BP
 */
 func (f *Forth) RPat() {
 	f.Push(f.RP)
-	f.NEXT()
+	f._next()
 }
 
 /*
 CODE  RP!   ( a -- )                \ Set the return stack pointer.
       POP   BP                      \ copy (BP) to tos
-      $NEXT
+      $_next
 */
 func (f *Forth) RPbang() {
 	f.RP = f.Pop()
-	f.NEXT()
+	f._next()
 }
 
 /*
 CODE  R>    ( -- w )                \ Pop return stack to data stack.
       PUSH  0[BP]                   \ copy w to data stack
       ADD   BP,2                    \ adjust RP for popping
-      $NEXT
+      $_next
 */
 func (f *Forth) Rfrom() {
 	f.Push(f.WordPtr(f.RP))
 	f.RP = f.RP + 2
-	f.NEXT()
+	f._next()
 }
 
 /*
 CODE  R@    ( -- w )                \ Copy top of return stack to data stack.
       PUSH  0[BP]                   \ copy w to data stack
-      $NEXT
+      $_next
 */
 func (f *Forth) Rat() {
 	f.Push(f.WordPtr(f.RP))
-	f.NEXT()
+	f._next()
 }
 
 /*
 CODE  >R    ( w -- )                \ Push data stack to return stack.
       SUB   BP,2                    \ adjust RP for pushing
       POP   0[BP]                   \ push w to return stack
-      $NEXT
+      $_next
 */
 func (f *Forth) Tor() {
 	f.RP = f.RP - 2
 	f.SetWordPtr(f.RP, f.Pop())
-	f.NEXT()
+	f._next()
 }
 
 /*
 CODE  DROP  ( w -- )                \ Discard top stack item.
       ADD   SP,2                   \ adjust SP to pop
-      $NEXT
+      $_next
 */
 func (f *Forth) Drop() {
 	f.SP = f.SP + 2
-	f.NEXT()
+	f._next()
 }
 
 /*
 CODE  DUP   ( w -- w w )            \ Duplicate the top stack item.
       MOV   BX,SP                   \ use BX to index the stack
       PUSH  0[BX]
-      $NEXT
+      $_next
 */
 func (f *Forth) Dup() {
 	f.Push(f.WordPtr(f.SP))
-	f.NEXT()
+	f._next()
 }
 
 /*
@@ -346,48 +348,48 @@ CODE  SWAP  ( w1 w2 -- w2 w1 )      \ Exchange top two stack items.
       POP   AX                      \ get w1
       PUSH  BX                      \ push w2
       PUSH  AX                      \ push w1
-      $NEXT
+      $_next
 */
 func (f *Forth) Swap() {
 	bx := f.Pop()
 	ax := f.Pop()
 	f.Push(bx)
 	f.Push(ax)
-	f.NEXT()
+	f._next()
 }
 
 /*
 CODE  OVER  ( w1 w2 -- w1 w2 w1 )   \ Copy second stack item to top.
       MOV   BX,SP                   \ use BX to index the stack
       PUSH  2[BX]                   \ get w1 and push on stack
-      $NEXT
+      $_next
 */
 func (f *Forth) Over() {
 	bx := f.SP + 2
 	f.Push(f.WordPtr(bx))
-	f.NEXT()
+	f._next()
 }
 
 /*
 CODE  SP@   ( -- a )                \ Push the current data stack pointer.
       MOV   BX,SP                   \ use BX to index the stack
       PUSH  BX                      \ push SP back
-      $NEXT
+      $_next
 */
 func (f *Forth) Sp_at() {
 	bx := f.SP
 	f.Push(bx)
-	f.NEXT()
+	f._next()
 }
 
 /*
 CODE  SP!   ( a -- )                \ Set the data stack pointer.
       POP   SP                      \ safety
-      $NEXT
+      $_next
 */
 func (f *Forth) Sp_bang() {
 	f.SP = f.Pop()
-	f.NEXT()
+	f._next()
 }
 
 /*
@@ -395,7 +397,7 @@ CODE  0<    ( n -- f )              \ Return true if n is negative.
       POP   AX
       CWD                           \ sign extend AX into DX
       PUSH  DX                      \ push 0 or -1
-      $NEXT
+      $_next
 */
 func (f *Forth) Zless() {
 	ax := f.Pop()
@@ -404,7 +406,7 @@ func (f *Forth) Zless() {
 	} else {
 		f.Push(0xffff)
 	}
-	f.NEXT()
+	f._next()
 }
 
 /*
@@ -413,14 +415,14 @@ CODE  AND   ( w w -- w )            \ Bitwise AND.
       POP   AX
       AND   BX,AX
       PUSH  BX
-      $NEXT
+      $_next
 */
 func (f *Forth) And() {
 	a := f.Pop()
 	b := f.Pop()
 	r := a & b
 	f.Push(r)
-	f.NEXT()
+	f._next()
 }
 
 /*
@@ -429,14 +431,14 @@ CODE  OR    ( w w -- w )            \ Bitwise inclusive OR.
       POP   AX
       OR    BX,AX
       PUSH  BX
-      $NEXT
+      $_next
 */
 func (f *Forth) Or() {
 	a := f.Pop()
 	b := f.Pop()
 	r := a | b
 	f.Push(r)
-	f.NEXT()
+	f._next()
 }
 
 /*
@@ -445,14 +447,14 @@ CODE  XOR   ( w w -- w )            \ Bitwise exclusive OR.
       POP   AX
       XOR   BX,AX
       PUSH  BX
-      $NEXT
+      $_next
 */
 func (f *Forth) Xor() {
 	a := f.Pop()
 	b := f.Pop()
 	r := a ^ b
 	f.Push(r)
-	f.NEXT()
+	f._next()
 }
 
 /*
@@ -465,7 +467,7 @@ CODE  UM+   ( w w -- w cy )
       RCL   CX,1                    \ get carry
       PUSH  AX                      \ push sum
       PUSH  CX                      \ push carry
-      $NEXT
+      $_next
 */
 func (f *Forth) UMplus() {
 	b := f.Pop()
@@ -479,5 +481,5 @@ func (f *Forth) UMplus() {
 	}
 	f.Push(r)
 	f.Push(cf)
-	f.NEXT()
+	f._next()
 }
