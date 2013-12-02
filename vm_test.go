@@ -1,6 +1,7 @@
 package eforth
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 	"testing"
@@ -128,7 +129,7 @@ func TestAddPrimAddr(t *testing.T) {
 	f.prims = 0
 	a := func() {}
 	f.AddPrim("BYE", a)
-    aa, _ := f.Addr("BYE")
+	aa, _ := f.Addr("BYE")
 	if aa != CODEE {
 		t.Fatal("address of BYE ought to be", CODEE, "and not ", aa)
 	}
@@ -136,12 +137,12 @@ func TestAddPrimAddr(t *testing.T) {
 
 // Adding a colon word creates a new word named after the first string after the colon
 func TestAddColon(t *testing.T) {
-    f := NewForth()
-    f.AddWord(": nop ;")
-    aa, _ := f.Addr("nop")
-    if aa == 0 {
-        t.Fatal("nop should have an address", aa)
-    }
+	f := NewForth()
+	f.AddWord(": nop ;")
+	aa, _ := f.Addr("nop")
+	if aa == 0 {
+		t.Fatal("nop should have an address", aa)
+	}
 }
 
 func Uint16sEqual(a, b []uint16) bool {

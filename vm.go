@@ -4,9 +4,9 @@ package eforth
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
-    "strings"
-    "errors"
+	"strings"
 )
 
 /*

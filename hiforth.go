@@ -1,12 +1,12 @@
 package eforth
 
 import (
-    "fmt"
-    "strings"
-    )
+	"fmt"
+	"strings"
+)
 
 func (f *Forth) ColonDefs() {
-    all := `
+	all := `
 : + UM+ DROP ;
 
 : doVAR ( -- a ) R> ;
@@ -21,13 +21,13 @@ func (f *Forth) ColonDefs() {
 
 : FORTH ( -- ) doVOC [ 0 , 0 , ;
 `
-    fmt.Println("HIFORTH")
-    for _, def := range strings.Split(all, "\n\n") {
-        err := f.AddWord(def)
-        if err != nil {
-            fmt.Println("ERROR: ", err)
-            fmt.Println(def)
-        }
-    }
+	fmt.Println("HIFORTH")
+	for _, def := range strings.Split(all, "\n\n") {
+		err := f.AddWord(def)
+		if err != nil {
+			fmt.Println("ERROR: ", err)
+			fmt.Println(def)
+		}
+	}
 
 }
