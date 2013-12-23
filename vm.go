@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"strconv"
 )
 
 /*
@@ -149,7 +150,6 @@ func NewForth() *Forth {
 	for _, v := range words {
 		f.AddPrim(v.word, v.m)
 	}
-	fmt.Println("NewForth()")
 	f.ColonDefs()
 	return f
 }
@@ -302,7 +302,6 @@ func XCHG(a, b *uint16) {
 // SP = SP -2
 // [SP] = operand
 func (f *Forth) Push(v uint16) {
-	fmt.Println("f.SP is", f.SP)
 	f.SP = f.SP - 2
 	binary.LittleEndian.PutUint16(f.Memory[f.SP:], v)
 }
@@ -314,4 +313,4 @@ func (f *Forth) Pop() uint16 {
 	res := binary.LittleEndian.Uint16(f.Memory[f.SP:])
 	f.SP = f.SP + 2
 	return res
-}
+}	
