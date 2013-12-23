@@ -102,6 +102,7 @@ CODE  doLIT ( -- w )                \ Push inline literal on data stack.
 // for data not code
 func (f *Forth) doLIT() {
 	ax := f.WordPtr(f.IP)
+	f.IP += 2
 	f.Push(ax)
 	f._next()
 }

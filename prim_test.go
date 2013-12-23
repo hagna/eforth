@@ -50,7 +50,7 @@ func TestRx2(t *testing.T) {
 	}
 }
 
-func TestDoList(t *testing.T) {
+func TestDoLit(t *testing.T) {
 	f := NewForth()
 	f.B_IO()
 	f.IP = 30
@@ -60,8 +60,8 @@ func TestDoList(t *testing.T) {
 	if tos != 0xdead {
 		t.Fatal("should be dead but tos is", tos)
 	}
-	if f.IP != 32 {
-		t.Fatal("IP should have advanced to", 32)
+	if f.IP != 34 {
+		t.Fatal("IP should have advanced to 34 but was", f.IP)
 	}
 }
 
