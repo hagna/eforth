@@ -227,10 +227,14 @@ func (f *Forth) Addr(word string) (res uint16, err error) {
 	return
 }
 
-func (f *Forth) CallFn(word string) {
-	m := f.prim2func[word]
+func (f *Forth) CallFn(word string) error {
+	m, ok := f.prim2func[word]
 	fmt.Printf("CallFn %v \"%s\"\n", m, word)
+	if !ok {
+		return errors.New(fmt.Sprintf("No method found for \"%s\"", word))
+	}
 	m()
+	return nil
 }
 
 func (f *Forth) Frompcode(pcode uint16) (res string) {
@@ -250,7 +254,11 @@ inf:
 		pcode = f.WordPtr(f.WP)
 		word = f.Frompcode(pcode)
 		fmt.Printf("WP %x IP %x pcode %x word \"%s\"\n", f.WP, f.IP, pcode, word)
-		f.CallFn(word)
+		err := f.CallFn(word)
+		if err != nil {
+			fmt.Println(err)
+			break inf
+		}
 		if f.IP == 0xffff { // for BYE
 			break inf
 		}

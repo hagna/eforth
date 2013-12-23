@@ -133,14 +133,12 @@ func (f *Forth) doLIST() {
 /*
    Call puts the addresss of the first word after doLIST on the stack
    and then then calls the primitive code for the word following itself
+
+   CALL ADDR  ; for example
 */
 func (f *Forth) Call() {
-	fmt.Printf("f.WP %x -> %x (should be call)\n", f.WP, f.WordPtr(f.WP))
 	f.Push(f.WP + 4)
-	callme := f.WordPtr(f.WordPtr(f.WP + 2)) // or maybe it ought to be pcode
-	word := f.Frompcode(callme)
-	fmt.Printf("Call: callme %x word \"%s\"\n", callme, word)
-	f.CallFn(word) // ought to be doLIST unless we use native Call for something else
+	f.WP = f.WordPtr(f.WP + 2)  // move WP over two and down one to the address of doLIST
 }
 
 // the converse of doLIST. Ends the colon definition.
