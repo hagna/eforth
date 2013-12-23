@@ -121,6 +121,7 @@ func NewForth() *Forth {
 		{"EXECUTE", f.Execute},
 		{"doLIT", f.doLIT},
 		{";", f.EXIT},
+		{"EXIT", f.EXIT},
 		{"NEXT", f.Next},
 		{"?BRANCH", f.Q_branch},
 		{"BRANCH", f.Branch},
