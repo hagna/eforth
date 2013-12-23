@@ -291,3 +291,111 @@ func TestNamedict(t *testing.T) {
 		t.Fatal("Wrong memory was", s, "and it should be", good)
 	}
 }
+
+func TestNamedDictColons(t *testing.T) {
+    f := NewForth()
+    oldNP := f.NP
+    f.AddWord(": nop ;")
+    newNP := f.NP
+    if oldNP == newNP {
+        t.Fatal("adding a word should change the NP pointer, but it didn't", oldNP)
+    }
+}
+
+func RunWord(word string, f *Forth, t *testing.T) {
+	called := false
+	f.AddPrim("BYE", func() {
+		fmt.Println("hello from the BYE primitive")
+		called = true
+		f.BYE()
+	})
+	f.AddWord(fmt.Sprintf(": A %s BYE ;", word))
+	a, err := f.Addr("A")
+	fmt.Printf("Addr of doit is %x\n", a)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.SetWordPtr(COLDD, a)
+	f.IP = COLDD
+	f._next()
+	f.Main()
+	if !called {
+		t.Fatal("Didn't call BYE function")
+	}
+}
+
+// IF THEN ought to compile correctly when AddWord is called
+func TestIfThen(t *testing.T) {
+	f := NewForth()
+	f.AddWord(": ?DUP ( w -- w w | 0 ) DUP IF DUP THEN ;")
+	a, _ := f.Addr("?DUP")
+	for _, j := range f.Memory[a:a+16] {
+		fmt.Printf("%x ", j)
+	}
+	f.Push(30)
+	RunWord("?DUP", f, t)
+	x := f.Pop()
+	y := f.Pop()
+	fmt.Println()
+	if x != 30 {
+		t.Fatal("should have been 30 but was", x)
+	}
+	if x != y {
+		t.Fatal("should have two equal vals on the stack but got", x, y)
+	}
+}
+
+// nested IF THEN ought to compile correctly when AddWord is called
+func TestIfThenNest(t *testing.T) {
+	f := NewForth()
+	f.AddWord(": nest ( w -- w w | 0 ) DUP IF DUP IF DUP + THEN DUP + THEN ;")
+	a, _ := f.Addr("nest")
+	for _, j := range f.Memory[a:a+16] {
+		fmt.Printf("%x ", j)
+	}
+	f.Push(30)
+	RunWord("nest", f, t)
+	x := f.Pop()
+	fmt.Println()
+	if x != 120 {
+		t.Fatal("should have been 120 but was", x)
+	}
+}   
+
+func TestLifo(t *testing.T) {
+	f := NewForth()
+	f.Push(10)
+	f.Push(20)
+	s := f.Pop()
+	if s != 20 {
+		t.Fatal("fifo not lifo")
+	}
+}
+
+// IF THEN ELSE ought to compile correctly when AddWord is called
+func TestIfThenElse(t *testing.T) {
+	f := NewForth()
+	f.AddWord(": ?DUP ( a w -- a | w ) DUP IF DROP ELSE SWAP DROP THEN ;")
+	a, _ := f.Addr("?DUP")
+	for _, j := range f.Memory[a:a+16] {
+		fmt.Printf("%x ", j)
+	}
+	f.Push(30)
+	f.Push(10)
+	RunWord("?DUP", f, t)
+	x := f.Pop()
+	y := f.Pop()
+	fmt.Println("x is ",x, "and y is", y)
+	if x != 30 {
+		t.Fatal("should have been 30 but was", x)
+	}
+	f.Push(30)
+	f.Push(0)
+	RunWord("?DUP", f, t)
+	x = f.Pop()
+	y = f.Pop()
+	fmt.Println("x is ",x, "and y is", y)
+	if x != 0 {
+		t.Fatal("should have been 0 but was", x)
+	}
+}

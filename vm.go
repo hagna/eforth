@@ -193,28 +193,83 @@ func (f *Forth) RemoveComments(a string) (b string) {
 	return
 }
 
+func doTHEN(f *Forth, ifs []uint16, addr uint16) {
+	li := len(ifs) -1 
+	ifaddr := ifs[li]
+	ifs = ifs[:li]	
+	f.SetWordPtr(ifaddr, addr)
+}
+
+func doIF(f *Forth, addr uint16, ifs *[]uint16, word string) {
+	*ifs = append(*ifs, addr+4)
+	w, _ := f.Addr(word)
+	f.SetWordPtr(addr+2, w)
+}
+
 func (f *Forth) AddWord(cdef string) (e error) {
-	f.prims = f.prims + 1
+	prims := f.prims + 1
 	e = nil
 	all := strings.Fields(f.RemoveComments(cdef))
-	addr := CODEE + (2 * (f.prims - 1))
+	addr := CODEE + (2 * (prims - 1))
 	name := all[1]
+	all[1] = ":"
 	f.prim2addr[name] = addr
-	iwords := append([]string{"CALL", ":"}, all[2:]...)
-	fmt.Println(iwords)
+	f.AddName(name, addr)
+	iwords := all[1:]
 	f.SetWordPtr(addr, 2) // CALL is 2
-	fmt.Printf("%x: %x %s\n", addr, 2, "CALL")
-	for _, word := range iwords[1:] {
-		wa, err := f.Addr(word)
-		if err != nil {
-			e = err
-			return
+	ifs := []uint16{}
+	for j, word := range iwords {
+		fmt.Println("word is ", word)
+		switch(word) {
+			case "IF":
+				doIF(f, addr, &ifs, "?BRANCH")
+				prims = prims + 2
+				addr = addr + 4
+			case "THEN":
+				/*
+				CALL addr addr IF addr addr THEN addrA
+				CALL addr addr QBRAN p_addrA addr addr addrA
+
+				Also things could be nested
+				*/
+				doTHEN(f, ifs, addr+2)
+				// +2 is because addr points to the previous word addr
+			case "ELSE":
+				/*
+				CALL addr addr IF addr ELSE addrA addr THEN addrB 
+				CALL addr addr QBRAN p_addrA addr BRAN p_addrB addrA addr addrB
+				*/
+				doTHEN(f, ifs, addr+6)
+				doIF(f, addr, &ifs, "BRANCH")
+				prims = prims + 2
+				addr = addr + 4
+			default:
+				var wa uint16
+				if j > 1 && iwords[j-1] == "doLIT" {
+					x, err := strconv.Atoi(word)
+					if err != nil {
+						e = err
+						return
+					}
+					wa = uint16(x)
+				} else {
+					x, err := f.Addr(word)
+					if err != nil {
+						e = err
+						return
+					}
+					wa = uint16(x)
+			
+				}
+				addr = addr + 2
+				f.SetWordPtr(addr, wa)
+				prims = prims + 1
+				fmt.Printf("%x: %x %s\n", addr, wa, word)
 		}
-		addr = addr + 2
-		f.SetWordPtr(addr, wa)
-		f.prims = f.prims + 1
-		fmt.Printf("%x: %x %s\n", addr, wa, word)
+		fmt.Printf("addr is %x\n", addr)
 	}
+
+	f.prims = prims
 	return
 }
 
