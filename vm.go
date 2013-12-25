@@ -218,9 +218,22 @@ func (f *Forth) AddWord(cdef string) (e error) {
 	iwords := all[1:]
 	f.SetWordPtr(addr, 2) // CALL is 2
 	ifs := []uint16{}
+	begins := []uint16{}
 	for j, word := range iwords {
 		fmt.Println("word is ", word)
 		switch(word) {
+			case "BEGIN":
+				begins = append(begins, addr+2)
+				// get rid of +2 makes no sense
+			case "AGAIN":
+				i := len(begins) -1
+				beginaddr := begins[i]
+				begins = begins[:i]
+				branch, _ := f.Addr("BRANCH")
+				f.SetWordPtr(addr+2, branch)
+				f.SetWordPtr(addr+4, beginaddr)
+				prims = prims + 2
+				addr = addr + 4
 			case "IF":
 				doIF(f, addr, &ifs, "?BRANCH")
 				prims = prims + 2

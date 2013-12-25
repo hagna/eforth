@@ -372,6 +372,15 @@ func TestLifo(t *testing.T) {
 	}
 }
 
+func dumpmem(f *Forth, i, k uint16) string {
+	res := ""
+	for _, j := range f.Memory[i:i+k] {
+		res += fmt.Sprintf("%x ", j)
+	}
+	res += "\n"
+	return res
+}
+
 // IF THEN ELSE ought to compile correctly when AddWord is called
 func TestIfThenElse(t *testing.T) {
 	f := NewForth()
@@ -397,5 +406,30 @@ func TestIfThenElse(t *testing.T) {
 	fmt.Println("x is ",x, "and y is", y)
 	if x != 0 {
 		t.Fatal("should have been 0 but was", x)
+	}
+}
+
+// test begin again infinite loop
+func TestBeginAgain(t *testing.T) {
+	f := NewForth()
+	word :=  ": forever BEGIN DUP AGAIN ;"
+	f.AddWord(word)
+	f.Push(99)
+	a, _ := f.Addr("forever")
+	i := a+4*CELLL
+	branchto := f.WordPtr(i)
+	waddr := f.WordPtr(branchto)
+	pcode := f.WordPtr(waddr)
+	word, ok := f.pcode2word[pcode]
+	if !ok {
+		t.Log("The word", word, "in bytes is", dumpmem(f, a, 6*CELLL))
+		t.Log("Found branch to address", branchto, "which is ", waddr)
+		t.Fatal("was expecting to find pcode for", pcode)
+	}
+	if word != "DUP" {
+		t.Log("The word", word, "in bytes is", dumpmem(f, a, 6*CELLL))
+		t.Log("pointer deref after again was", waddr)
+		t.Log("deref that and we ought to have pcode for DUP", pcode)
+		t.Fatal("should have found DUP by following that address")
 	}
 }
