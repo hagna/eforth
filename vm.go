@@ -109,47 +109,9 @@ func NewForth() *Forth {
 		NP:         NAMEE,
 		LAST:       0}
 	fmt.Printf("NAMEE is %x\n", NAMEE)
-	words := []struct {
-		word string
-		m    fn
-	}{
-		{"BYE", f.BYE},
-		{"CALL", f.Call},
-		{":", f.doLIST},
-		{"!IO", f.B_IO},
-		{"?RX", f.Q_RX},
-		{"!TX", f.B_TX},
-		{"EXECUTE", f.Execute},
-		{"doLIT", f.doLIT},
-		{";", f.EXIT},
-		{"EXIT", f.EXIT},
-		{"NEXT", f.Next},
-		{"?BRANCH", f.Q_branch},
-		{"BRANCH", f.Branch},
-		{"!", f.Bang},
-		{"@", f.At},
-		{"C!", f.Cbang},
-		{"RP@", f.RPat},
-		{"RP!", f.RPbang},
-		{"R>", f.Rfrom},
-		{"R@", f.Rat},
-		{">R", f.Tor},
-		{"DROP", f.Drop},
-		{"DUP", f.Dup},
-		{"SWAP", f.Swap},
-		{"OVER", f.Over},
-		{"SP@", f.Sp_at},
-		{"SP!", f.Sp_bang},
-		{"0<", f.Zless},
-		{"AND", f.And},
-		{"OR", f.Or},
-		{"XOR", f.Xor},
-		{"UM+", f.UMplus},
-	}
 	f.prim2addr["UPP"] = UPP
-	for _, v := range words {
-		f.AddPrim(v.word, v.m)
-	}
+	f.AddPrimitives()
+
 	f.ColonDefs()
 	return f
 }
