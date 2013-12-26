@@ -445,4 +445,19 @@ func TestBeginUntil(t *testing.T) {
 		t.Fatal(word, "should have left 2 on the stack")
 	}
 }
+
+func TestBeginUntil10(t *testing.T) {
+	f := NewForth()
+	called := 0
+	f.AddPrim("CALLME", func() {
+		called += 1
+		f._next()
+	})
+	word := ": teniter doLIT 10 BEGIN CALLME doLIT -1 + DUP doLIT 0 = UNTIL doLIT 2 ;"
+	f.AddWord(word)
+	RunWord("teniter", f, t)
+	if called != 10  {
+		t.Fatal(word, "called CALLME", called, "times instead of 10")
+	}
+}
 	

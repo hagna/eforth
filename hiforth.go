@@ -41,7 +41,7 @@ func (f *Forth) ColonDefs() {
 
 : ABS ( n -- +n ) DUP 0< IF NEGATE THEN ;
 
-: = ( w w -- t ) XOR IF 0 EXIT THEN -1 ;
+: = ( w w -- t ) XOR IF doLIT 0 EXIT THEN doLIT -1 ;
 
 : U< ( u u -- t ) 2DUP XOR 0< IF SWAP DROP 0< EXIT THEN - 0< ;
 
