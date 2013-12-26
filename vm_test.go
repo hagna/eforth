@@ -433,3 +433,16 @@ func TestBeginAgain(t *testing.T) {
 		t.Fatal("should have found DUP by following that address")
 	}
 }
+
+// begin until loops
+func TestBeginUntil(t *testing.T) {
+	f := NewForth()
+	word := ": oneiter BEGIN doLIT 1 UNTIL doLIT 2 ;"
+	f.AddWord(word)
+	RunWord("oneiter", f, t)
+	a := f.Pop()
+	if a != 2  {
+		t.Fatal(word, "should have left 2 on the stack")
+	}
+}
+	

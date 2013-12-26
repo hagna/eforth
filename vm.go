@@ -196,6 +196,15 @@ func (f *Forth) AddWord(cdef string) (e error) {
 				f.SetWordPtr(addr+4, beginaddr)
 				prims = prims + 2
 				addr = addr + 4
+			case "UNTIL":
+				i := len(begins) -1
+				beginaddr := begins[i]
+				begins = begins[:i]
+				branch, _ := f.Addr("?BRANCH")
+				f.SetWordPtr(addr+2, branch)
+				f.SetWordPtr(addr+4, beginaddr)
+				prims = prims + 2
+				addr = addr + 4
 			case "IF":
 				doIF(f, addr, &ifs, "?BRANCH")
 				prims = prims + 2
