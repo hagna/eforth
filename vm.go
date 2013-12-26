@@ -172,13 +172,11 @@ func (f *Forth) AddWord(cdef string) (e error) {
 	prims := f.prims + 1
 	e = nil
 	all := strings.Fields(f.RemoveComments(cdef))
-	addr := CODEE + (2 * (prims - 1))
+	startaddr := CODEE + (2 * (prims - 1))
+	addr := startaddr
 	name := all[1]
 	all[1] = ":"
-	f.prim2addr[name] = addr
-	f.AddName(name, addr)
 	iwords := all[1:]
-	f.SetWordPtr(addr, 2) // CALL is 2
 	ifs := []uint16{}
 	begins := []uint16{}
 	for j, word := range iwords {
@@ -240,6 +238,7 @@ func (f *Forth) AddWord(cdef string) (e error) {
 					x, err := f.Addr(word)
 					if err != nil {
 						e = err
+						fmt.Printf("ERROR: not adding \"%v\" because %v\n", name, err)
 						return
 					}
 					wa = uint16(x)
@@ -253,6 +252,9 @@ func (f *Forth) AddWord(cdef string) (e error) {
 		fmt.Printf("addr is %x\n", addr)
 	}
 
+	f.SetWordPtr(startaddr, 2) // CALL is 2
+	f.prim2addr[name] = startaddr
+	f.AddName(name, startaddr)
 	f.prims = prims
 	return
 }
