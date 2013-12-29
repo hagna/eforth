@@ -179,6 +179,7 @@ func (f *Forth) AddWord(cdef string) (e error) {
 	iwords := all[1:]
 	ifs := []uint16{}
 	begins := []uint16{}
+	whiles := []uint16{}
 	for j, word := range iwords {
 		fmt.Println("word is ", word)
 		switch(word) {
@@ -194,6 +195,27 @@ func (f *Forth) AddWord(cdef string) (e error) {
 				f.SetWordPtr(addr+4, beginaddr)
 				prims = prims + 2
 				addr = addr + 4
+			case "WHILE":
+				// compiles qbranch and addr after repeat
+				branch, _ := f.Addr("?BRANCH")
+				f.SetWordPtr(addr+2, branch)
+				whiles = append(whiles, addr+4)
+				prims = prims + 2
+				addr = addr + 4
+			case "REPEAT":
+				// compile branch and addr of begin
+				i := len(begins) -1
+				beginaddr := begins[i]
+				begins = begins[:i]
+				branch, _ := f.Addr("BRANCH")
+				f.SetWordPtr(addr+2, branch)
+				f.SetWordPtr(addr+4, beginaddr)
+				prims = prims + 2
+				addr = addr + 4
+				i = len(whiles) - 1
+				whileaddr := whiles[i]
+				whiles = whiles[:i]
+				f.SetWordPtr(whileaddr, addr+2)
 			case "UNTIL":
 				i := len(begins) -1
 				beginaddr := begins[i]

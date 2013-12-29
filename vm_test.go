@@ -461,3 +461,22 @@ func TestBeginUntil10(t *testing.T) {
 	}
 }
 	
+
+func TestBeginWhileRepeat(t *testing.T) {
+	f := NewForth()
+	called := 0
+	f.AddPrim("CALLME", func() {
+		called += 1
+		f._next()
+	})
+	word := ": iter doLIT 6 BEGIN doLIT -1 + DUP WHILE CALLME REPEAT doLIT 30 ;"
+	f.AddWord(word)
+	RunWord("iter", f, t)
+	if called != 5 {
+		t.Fatal(word, "ought to have called CALLME 5 times but called it", called, "times")
+	}
+	b := f.Pop()
+	if b != 30 {
+		t.Fatal("should have left 30 on the stack")
+	}
+}
