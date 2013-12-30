@@ -8,13 +8,11 @@ import (
 
 var asm2forth map[string]string
 
-func (f *Forth) WordFromASM(asm string) (e error) {
-	addrs := []uint16{}
+func (f *Forth) WordFromASM(asm string) (err error) {
 	words := []string{}
 	labels := make(map[string]uint16)
 	name := ""
-	isColondef := false
-	e = nil
+	err = nil
 	for iline, line := range strings.Split(asm, "\n") {
 		fields := strings.FieldsFunc(line, func(r rune) bool {
 			if r == ' ' || r == ',' || r == '\t' {
@@ -22,44 +20,31 @@ func (f *Forth) WordFromASM(asm string) (e error) {
 			}
 			return false
 		})
-		fmt.Println(fields)
-		if len(fields) == 0 {
-			continue
-		}
-		switch name {
-		case "":
-			fmt.Println("name blank and is", name)
-			switch fields[0] {
-			case "$COLON", "$USER":
-				isColondef = true
-				name = fields[2]
+		fmt.Println(iline)
+		toks := fields
+tokenloop:
+		for len(toks) > 0 {
+			tok := toks[0]
+			toks = toks[1:]
+			fmt.Println("token is", tok)
+			fmt.Println("the rest is", toks)
+			switch {
+			case tok == "$COLON":
+				name = toks[1]
 				name = name[1 : len(name)-1]
 				vname := fields[3]
 				asm2forth[vname] = name
-			}
-		default:
-			i := 0
-			if fields[0] == "DW" {
-				fmt.Println("fields[0] is DW")
-				i = 1
-			}
-			label := fields[0]
-			if strings.HasSuffix(label, ":") {
+				words = append(words, []string{"2", ":"}...)
+				break tokenloop
+			case strings.HasSuffix(tok, ":") && tok == fields[0]:
+				label := tok
 				label = label[:len(label)-1]
 				labels[label] = uint16(len(words))
-				if fields[1] == "DW" {
-					i = 2
-				}
+			case tok == "DW":
+				words = append(words, toks...)
+				break tokenloop
 			}
-			if i != 0 {
-				words = append(words, fields[i:]...)
-			}
-			fmt.Println(iline)
-			fmt.Println(words)
 		}
-	}
-	if isColondef {
-		words = append([]string{"2", ":"}, words...)
 	}
 	startaddr := CODEE + (2 * f.prims)
 	setit := func(i int, addr uint16) {
@@ -81,19 +66,18 @@ func (f *Forth) WordFromASM(asm string) (e error) {
 			setit(i, addr)
 		case el:
 			fmt.Println("found it the label at", v)
-			// +2 is for CALL doLIST
-			addr = (v + 2) * CELLL
+			addr = v * CELLL
 			fmt.Println("startaddr is", startaddr)
 			fmt.Println("label addr is", addr+startaddr)
 			setit(i, addr+startaddr)
 		case e2 == nil && ok:
 			setit(i, c)
 		default:
+			err = e
 			fmt.Println("ERROR: could not add", name, "because", e)
 
 		}
 	}
-	fmt.Println("addrs is", addrs, "labels is", labels, "name is", name)
 	fmt.Println("words are", words)
 	fmt.Println("hex words", dumpmem(f, startaddr, uint16(len(words)*CELLL)))
 	f.prim2addr[name] = startaddr
