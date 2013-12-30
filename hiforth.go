@@ -36,7 +36,8 @@ func (f* Forth) WordFromASM(asm string) (e error) {
 				isColondef = true
 				name = fields[2]
 				name = name[1:len(name)-1]
-				fmt.Println("name is", name)
+				vname := fields[3]
+				asm2forth[vname] = name	
 			}
 		} else {
 			if len(fields) >= 1 {
@@ -47,7 +48,8 @@ func (f* Forth) WordFromASM(asm string) (e error) {
 			}
 			label := fields[0]
 			if strings.HasSuffix(label, ":") {
-				labels[label] = uint16(len(words)*CELLL)
+				label = label[:len(label)-1]
+				labels[label] = uint16(len(words))
 				if fields[1] == "DW" {
 					i = 2
 				}
@@ -75,11 +77,17 @@ func (f* Forth) WordFromASM(asm string) (e error) {
 			if !ok {	
 				a, se := strconv.Atoi(word) 
 				if se != nil {
+					fmt.Println("labels is", labels)
+					fmt.Println("word", word, "ought to be in labels")
 					v, ok := labels[word]
 					if !ok {
 						fmt.Println("ERROR: could not add", name, "because", e)
 					} else {
-						addr = v
+						fmt.Println("found it the label at", v)
+						// +2 is for CALL doLIST
+						addr = (v+2)*CELLL
+						fmt.Println("startaddr is", startaddr)
+						fmt.Println("label addr is", addr+startaddr)
 						setit(i, addr+startaddr)
 					}
 				} else {
@@ -116,64 +124,34 @@ func (f *Forth) AddHiforth() {
 		fword string
 	}{
 		{"DOLIT", "doLIT"},
+		{"QBRAN", "?BRANCH"},
+		{"DUPP", "DUP"},
+		{"RFROM", "R>"},
 	}
 	for _, v := range amap {
 		asm2forth[v.aword] = v.fword
 	}
-	all := `
-: + UM+ DROP ;
+	hiforth := []string{`
+;   doVAR	( -- a )
+;		Run time routine for VARIABLE and CREATE.
 
-: doVAR ( -- a ) R> ;
-
-: UP ( -- a ) doVAR UPP ;
-
-: doUSER    ( -- a, Run time routine for user variables.)
-      R> @                          
-      UP @ + ;                     
-
-: doVOC ( -- ) R> CONTEXT ! ;
-
-: FORTH ( -- ) doVOC [ 0 , 0 , ;
-
-: ?DUP ( w -- w w | 0 ) DUP IF DUP THEN ;
-
-: ROT ( w1 w2 w3 -- w2 w3 w1 ) >R SWAP R> SWAP ;
-
-: 2DROP ( w w  -- ) DROP DROP ;
-
-: 2DUP ( w1 w2 -- w1 w2 w1 w2 ) OVER OVER  ;
-
-: NOT ( w -- w ) doLIT -1 XOR  ;
-
-: NEGATE ( n -- -n ) NOT 1 + ;
-
-: DNEGATE ( d -- -d ) NOT >R NOT 1 UM+ R> + ;
-
-: D+ ( d d -- d ) >R SWAP >R UM+ R> R> + + ;
-
-: - ( w w -- w ) NEGATE + ;
-
-: ABS ( n -- +n ) DUP 0< IF NEGATE THEN ;
-
-: = ( w w -- t ) XOR IF doLIT 0 EXIT THEN doLIT -1 ;
-
-: U< ( u u -- t ) 2DUP XOR 0< IF SWAP DROP 0< EXIT THEN - 0< ;
-
-: < ( n n -- t ) 2DUP XOR 0< IF      DROP 0< EXIT THEN - 0< ;
-
-: MAX ( n n -- n ) 2DUP      < IF SWAP THEN DROP ;
-
-: MIN ( n n -- n ) 2DUP SWAP < IF SWAP THEN DROP ;
-
-: WITHIN ( u ul uh -- t  \ ul <= u < uh )
-  OVER - >R - R> U< ;
+		$COLON	COMPO+5,'doVAR',DOVAR
+		DW	RFROM,EXIT
+`,
 `
-	fmt.Println("HIFORTH")
-	for _, def := range strings.Split(all, "\n\n") {
-		err := f.AddWord(def)
+;   UP		( -- a )
+;		Pointer to the user area.
+
+		$COLON	2,'UP',UP
+		DW	DOVAR
+		DW	UPP
+`}
+
+	for _, asm := range hiforth {
+		err := f.WordFromASM(asm)
 		if err != nil {
 			fmt.Println("ERROR: ", err)
-			fmt.Println(def)
+			fmt.Println(asm)
 		}
 	}
 

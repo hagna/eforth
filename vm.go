@@ -109,7 +109,6 @@ func NewForth() *Forth {
 		NP:         NAMEE,
 		LAST:       0}
 	fmt.Printf("NAMEE is %x\n", NAMEE)
-	f.prim2addr["UPP"] = UPP
 	f.AddPrimitives()
 	f.AddHiforth()
 	return f
