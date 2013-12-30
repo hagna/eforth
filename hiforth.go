@@ -7,14 +7,7 @@ import (
 )
 
 var asm2forth map[string]string
-/*func dumpmem(f *Forth, i, k uint16) string {
-	res := ""
-	for _, j := range f.Memory[i:i+k] {
-		res += fmt.Sprintf("%x ", j)
-	}
-	res += "\n"
-	return res
-}*/
+
 func (f* Forth) WordFromASM(asm string) (e error) {
 	addrs := []uint16{}
 	words := []string{}
@@ -30,36 +23,39 @@ func (f* Forth) WordFromASM(asm string) (e error) {
 			return false
 			})
 		fmt.Println(fields)
-		if name == "" {
-			fmt.Println("name blank and is", name)
-			if strings.Contains(line, "$COLON") {
-				isColondef = true
-				name = fields[2]
-				name = name[1:len(name)-1]
-				vname := fields[3]
-				asm2forth[vname] = name	
-			}
-		} else {
-			if len(fields) >= 1 {
-			i := 0
-			if fields[0] == "DW" {
-				fmt.Println("fields[0] is DW")
-				i = 1
-			}
-			label := fields[0]
-			if strings.HasSuffix(label, ":") {
-				label = label[:len(label)-1]
-				labels[label] = uint16(len(words))
-				if fields[1] == "DW" {
-					i = 2
-				}
-			}
-			if i != 0 {
-				words = append(words, fields[i:]...)
-			}
-			fmt.Println(iline)
-			fmt.Println(words)
-			}
+        if len(fields) == 0 {
+            continue
+        }
+        switch name {
+            case "":
+                fmt.Println("name blank and is", name)
+                switch fields[0] {
+                    case "$COLON", "$USER":
+                        isColondef = true
+                        name = fields[2]
+                        name = name[1:len(name)-1]
+                        vname := fields[3]
+                        asm2forth[vname] = name	
+                }
+            default:
+                i := 0
+                if fields[0] == "DW" {
+                    fmt.Println("fields[0] is DW")
+                    i = 1
+                }
+                label := fields[0]
+                if strings.HasSuffix(label, ":") {
+                    label = label[:len(label)-1]
+                    labels[label] = uint16(len(words))
+                    if fields[1] == "DW" {
+                        i = 2
+                    }
+                }
+                if i != 0 {
+                    words = append(words, fields[i:]...)
+                }
+                fmt.Println(iline)
+                fmt.Println(words)
 		}
 	}
 	if isColondef {
@@ -118,6 +114,7 @@ func (f* Forth) WordFromASM(asm string) (e error) {
 }
 
 func (f *Forth) AddHiforth() {
+	f.prim2addr["UPP"] = UPP
 	asm2forth = make(map[string]string)
 	amap := []struct {
 		aword string
