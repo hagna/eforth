@@ -6,8 +6,8 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"strings"
 	"strconv"
+	"strings"
 )
 
 /*
@@ -111,8 +111,7 @@ func NewForth() *Forth {
 	fmt.Printf("NAMEE is %x\n", NAMEE)
 	f.prim2addr["UPP"] = UPP
 	f.AddPrimitives()
-
-	f.ColonDefs()
+	f.AddHiforth()
 	return f
 }
 
