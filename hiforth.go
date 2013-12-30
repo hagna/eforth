@@ -68,40 +68,29 @@ func (f *Forth) WordFromASM(asm string) (e error) {
 	for i, word := range words {
 		fmt.Println(i, word)
 		addr, e := f.Addr(word)
-		if e != nil {
-			b, ok := asm2forth[word]
-			if !ok {
-				a, se := strconv.Atoi(word)
-				if se != nil {
-					fmt.Println("labels is", labels)
-					fmt.Println("word", word, "ought to be in labels")
-					v, ok := labels[word]
-					if !ok {
-						fmt.Println("ERROR: could not add", name, "because", e)
-					} else {
-						fmt.Println("found it the label at", v)
-						// +2 is for CALL doLIST
-						addr = (v + 2) * CELLL
-						fmt.Println("startaddr is", startaddr)
-						fmt.Println("label addr is", addr+startaddr)
-						setit(i, addr+startaddr)
-					}
-				} else {
-					fmt.Println("converted it to integer")
-					addr = uint16(a)
-					setit(i, addr)
-				}
-			} else {
-				a, e2 := f.Addr(b)
-				if e2 != nil {
-					fmt.Println("ERROR: found", word, "in ASM map but could not add", name, "because", e2)
-				} else {
-					addr = uint16(a)
-					setit(i, addr)
-				}
-			}
-		} else {
+		b, ok := asm2forth[word]
+		a, se := strconv.Atoi(word)
+		c, e2 := f.Addr(b)
+		v, el := labels[word]
+		switch {
+		case e == nil:
 			setit(i, addr)
+		case se == nil:
+			fmt.Println("converted it to integer")
+			addr = uint16(a)
+			setit(i, addr)
+		case el:
+			fmt.Println("found it the label at", v)
+			// +2 is for CALL doLIST
+			addr = (v + 2) * CELLL
+			fmt.Println("startaddr is", startaddr)
+			fmt.Println("label addr is", addr+startaddr)
+			setit(i, addr+startaddr)
+		case e2 == nil && ok:
+			setit(i, c)
+		default:
+			fmt.Println("ERROR: could not add", name, "because", e)
+
 		}
 	}
 	fmt.Println("addrs is", addrs, "labels is", labels, "name is", name)
