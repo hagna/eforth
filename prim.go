@@ -49,7 +49,6 @@ func (f *Forth) AddPrimitives() {
 	}
 }
 
-
 /*
 CODE BYE    ( -- , exit Forth )
       INT   020H                    \ return to DOS
@@ -182,7 +181,7 @@ func (f *Forth) doLIST() {
 */
 func (f *Forth) Call() {
 	f.Push(f.WP + 4)
-	f.WP = f.WordPtr(f.WP + 2)  // move WP over two and down one to the address of doLIST
+	f.WP = f.WordPtr(f.WP + 2) // move WP over two and down one to the address of doLIST
 }
 
 // the converse of doLIST. Ends the colon definition.

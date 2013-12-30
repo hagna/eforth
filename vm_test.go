@@ -293,13 +293,13 @@ func TestNamedict(t *testing.T) {
 }
 
 func TestNamedDictColons(t *testing.T) {
-    f := NewForth()
-    oldNP := f.NP
-    f.AddWord(": nop ;")
-    newNP := f.NP
-    if oldNP == newNP {
-        t.Fatal("adding a word should change the NP pointer, but it didn't", oldNP)
-    }
+	f := NewForth()
+	oldNP := f.NP
+	f.AddWord(": nop ;")
+	newNP := f.NP
+	if oldNP == newNP {
+		t.Fatal("adding a word should change the NP pointer, but it didn't", oldNP)
+	}
 }
 
 func RunWord(word string, f *Forth, t *testing.T) {
@@ -329,7 +329,7 @@ func TestIfThen(t *testing.T) {
 	f := NewForth()
 	f.AddWord(": ?DUP ( w -- w w | 0 ) DUP IF DUP THEN ;")
 	a, _ := f.Addr("?DUP")
-	for _, j := range f.Memory[a:a+16] {
+	for _, j := range f.Memory[a : a+16] {
 		fmt.Printf("%x ", j)
 	}
 	f.Push(30)
@@ -350,7 +350,7 @@ func TestIfThenNest(t *testing.T) {
 	f := NewForth()
 	f.AddWord(": nest ( w -- w w | 0 ) DUP IF DUP IF DUP + THEN DUP + THEN ;")
 	a, _ := f.Addr("nest")
-	for _, j := range f.Memory[a:a+16] {
+	for _, j := range f.Memory[a : a+16] {
 		fmt.Printf("%x ", j)
 	}
 	f.Push(30)
@@ -360,7 +360,7 @@ func TestIfThenNest(t *testing.T) {
 	if x != 120 {
 		t.Fatal("should have been 120 but was", x)
 	}
-}   
+}
 
 func TestLifo(t *testing.T) {
 	f := NewForth()
@@ -374,7 +374,7 @@ func TestLifo(t *testing.T) {
 
 func dumpmem(f *Forth, i, k uint16) string {
 	res := ""
-	for _, j := range f.Memory[i:i+k] {
+	for _, j := range f.Memory[i : i+k] {
 		res += fmt.Sprintf("%x ", j)
 	}
 	res += "\n"
@@ -386,7 +386,7 @@ func TestIfThenElse(t *testing.T) {
 	f := NewForth()
 	f.AddWord(": ?DUP ( a w -- a | w ) DUP IF DROP ELSE SWAP DROP THEN ;")
 	a, _ := f.Addr("?DUP")
-	for _, j := range f.Memory[a:a+16] {
+	for _, j := range f.Memory[a : a+16] {
 		fmt.Printf("%x ", j)
 	}
 	f.Push(30)
@@ -394,7 +394,7 @@ func TestIfThenElse(t *testing.T) {
 	RunWord("?DUP", f, t)
 	x := f.Pop()
 	y := f.Pop()
-	fmt.Println("x is ",x, "and y is", y)
+	fmt.Println("x is ", x, "and y is", y)
 	if x != 30 {
 		t.Fatal("should have been 30 but was", x)
 	}
@@ -403,7 +403,7 @@ func TestIfThenElse(t *testing.T) {
 	RunWord("?DUP", f, t)
 	x = f.Pop()
 	y = f.Pop()
-	fmt.Println("x is ",x, "and y is", y)
+	fmt.Println("x is ", x, "and y is", y)
 	if x != 0 {
 		t.Fatal("should have been 0 but was", x)
 	}
@@ -412,11 +412,11 @@ func TestIfThenElse(t *testing.T) {
 // test begin again infinite loop
 func TestBeginAgain(t *testing.T) {
 	f := NewForth()
-	word :=  ": forever BEGIN DUP AGAIN ;"
+	word := ": forever BEGIN DUP AGAIN ;"
 	f.AddWord(word)
 	f.Push(99)
 	a, _ := f.Addr("forever")
-	i := a+4*CELLL
+	i := a + 4*CELLL
 	branchto := f.WordPtr(i)
 	waddr := f.WordPtr(branchto)
 	pcode := f.WordPtr(waddr)
@@ -441,7 +441,7 @@ func TestBeginUntil(t *testing.T) {
 	f.AddWord(word)
 	RunWord("oneiter", f, t)
 	a := f.Pop()
-	if a != 2  {
+	if a != 2 {
 		t.Fatal(word, "should have left 2 on the stack")
 	}
 }
@@ -456,11 +456,10 @@ func TestBeginUntil10(t *testing.T) {
 	word := ": teniter doLIT 10 BEGIN CALLME doLIT -1 + DUP doLIT 0 = UNTIL doLIT 2 ;"
 	f.AddWord(word)
 	RunWord("teniter", f, t)
-	if called != 10  {
+	if called != 10 {
 		t.Fatal(word, "called CALLME", called, "times instead of 10")
 	}
 }
-	
 
 func TestBeginWhileRepeat(t *testing.T) {
 	f := NewForth()

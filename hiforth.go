@@ -8,7 +8,7 @@ import (
 
 var asm2forth map[string]string
 
-func (f* Forth) WordFromASM(asm string) (e error) {
+func (f *Forth) WordFromASM(asm string) (e error) {
 	addrs := []uint16{}
 	words := []string{}
 	labels := make(map[string]uint16)
@@ -21,48 +21,48 @@ func (f* Forth) WordFromASM(asm string) (e error) {
 				return true
 			}
 			return false
-			})
+		})
 		fmt.Println(fields)
-        if len(fields) == 0 {
-            continue
-        }
-        switch name {
-            case "":
-                fmt.Println("name blank and is", name)
-                switch fields[0] {
-                    case "$COLON", "$USER":
-                        isColondef = true
-                        name = fields[2]
-                        name = name[1:len(name)-1]
-                        vname := fields[3]
-                        asm2forth[vname] = name	
-                }
-            default:
-                i := 0
-                if fields[0] == "DW" {
-                    fmt.Println("fields[0] is DW")
-                    i = 1
-                }
-                label := fields[0]
-                if strings.HasSuffix(label, ":") {
-                    label = label[:len(label)-1]
-                    labels[label] = uint16(len(words))
-                    if fields[1] == "DW" {
-                        i = 2
-                    }
-                }
-                if i != 0 {
-                    words = append(words, fields[i:]...)
-                }
-                fmt.Println(iline)
-                fmt.Println(words)
+		if len(fields) == 0 {
+			continue
+		}
+		switch name {
+		case "":
+			fmt.Println("name blank and is", name)
+			switch fields[0] {
+			case "$COLON", "$USER":
+				isColondef = true
+				name = fields[2]
+				name = name[1 : len(name)-1]
+				vname := fields[3]
+				asm2forth[vname] = name
+			}
+		default:
+			i := 0
+			if fields[0] == "DW" {
+				fmt.Println("fields[0] is DW")
+				i = 1
+			}
+			label := fields[0]
+			if strings.HasSuffix(label, ":") {
+				label = label[:len(label)-1]
+				labels[label] = uint16(len(words))
+				if fields[1] == "DW" {
+					i = 2
+				}
+			}
+			if i != 0 {
+				words = append(words, fields[i:]...)
+			}
+			fmt.Println(iline)
+			fmt.Println(words)
 		}
 	}
 	if isColondef {
 		words = append([]string{"2", ":"}, words...)
 	}
 	startaddr := CODEE + (2 * f.prims)
-	setit := func (i  int, addr uint16) {
+	setit := func(i int, addr uint16) {
 		f.SetWordPtr(startaddr+uint16(i*CELLL), addr)
 	}
 	for i, word := range words {
@@ -70,8 +70,8 @@ func (f* Forth) WordFromASM(asm string) (e error) {
 		addr, e := f.Addr(word)
 		if e != nil {
 			b, ok := asm2forth[word]
-			if !ok {	
-				a, se := strconv.Atoi(word) 
+			if !ok {
+				a, se := strconv.Atoi(word)
 				if se != nil {
 					fmt.Println("labels is", labels)
 					fmt.Println("word", word, "ought to be in labels")
@@ -81,7 +81,7 @@ func (f* Forth) WordFromASM(asm string) (e error) {
 					} else {
 						fmt.Println("found it the label at", v)
 						// +2 is for CALL doLIST
-						addr = (v+2)*CELLL
+						addr = (v + 2) * CELLL
 						fmt.Println("startaddr is", startaddr)
 						fmt.Println("label addr is", addr+startaddr)
 						setit(i, addr+startaddr)
@@ -97,7 +97,7 @@ func (f* Forth) WordFromASM(asm string) (e error) {
 					fmt.Println("ERROR: found", word, "in ASM map but could not add", name, "because", e2)
 				} else {
 					addr = uint16(a)
-					setit(i, addr)	
+					setit(i, addr)
 				}
 			}
 		} else {
@@ -135,7 +135,7 @@ func (f *Forth) AddHiforth() {
 		$COLON	COMPO+5,'doVAR',DOVAR
 		DW	RFROM,EXIT
 `,
-`
+		`
 ;   UP		( -- a )
 ;		Pointer to the user area.
 

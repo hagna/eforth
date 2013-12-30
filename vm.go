@@ -154,9 +154,9 @@ func (f *Forth) RemoveComments(a string) (b string) {
 }
 
 func doTHEN(f *Forth, ifs []uint16, addr uint16) {
-	li := len(ifs) -1 
+	li := len(ifs) - 1
 	ifaddr := ifs[li]
-	ifs = ifs[:li]	
+	ifs = ifs[:li]
 	f.SetWordPtr(ifaddr, addr)
 }
 
@@ -180,94 +180,94 @@ func (f *Forth) AddWord(cdef string) (e error) {
 	whiles := []uint16{}
 	for j, word := range iwords {
 		fmt.Println("word is ", word)
-		switch(word) {
-			case "BEGIN":
-				begins = append(begins, addr+2)
-				// get rid of +2 makes no sense
-			case "AGAIN":
-				i := len(begins) -1
-				beginaddr := begins[i]
-				begins = begins[:i]
-				branch, _ := f.Addr("BRANCH")
-				f.SetWordPtr(addr+2, branch)
-				f.SetWordPtr(addr+4, beginaddr)
-				prims = prims + 2
-				addr = addr + 4
-			case "WHILE":
-				// compiles qbranch and addr after repeat
-				branch, _ := f.Addr("?BRANCH")
-				f.SetWordPtr(addr+2, branch)
-				whiles = append(whiles, addr+4)
-				prims = prims + 2
-				addr = addr + 4
-			case "REPEAT":
-				// compile branch and addr of begin
-				i := len(begins) -1
-				beginaddr := begins[i]
-				begins = begins[:i]
-				branch, _ := f.Addr("BRANCH")
-				f.SetWordPtr(addr+2, branch)
-				f.SetWordPtr(addr+4, beginaddr)
-				prims = prims + 2
-				addr = addr + 4
-				i = len(whiles) - 1
-				whileaddr := whiles[i]
-				whiles = whiles[:i]
-				f.SetWordPtr(whileaddr, addr+2)
-			case "UNTIL":
-				i := len(begins) -1
-				beginaddr := begins[i]
-				begins = begins[:i]
-				branch, _ := f.Addr("?BRANCH")
-				f.SetWordPtr(addr+2, branch)
-				f.SetWordPtr(addr+4, beginaddr)
-				prims = prims + 2
-				addr = addr + 4
-			case "IF":
-				doIF(f, addr, &ifs, "?BRANCH")
-				prims = prims + 2
-				addr = addr + 4
-			case "THEN":
-				/*
+		switch word {
+		case "BEGIN":
+			begins = append(begins, addr+2)
+			// get rid of +2 makes no sense
+		case "AGAIN":
+			i := len(begins) - 1
+			beginaddr := begins[i]
+			begins = begins[:i]
+			branch, _ := f.Addr("BRANCH")
+			f.SetWordPtr(addr+2, branch)
+			f.SetWordPtr(addr+4, beginaddr)
+			prims = prims + 2
+			addr = addr + 4
+		case "WHILE":
+			// compiles qbranch and addr after repeat
+			branch, _ := f.Addr("?BRANCH")
+			f.SetWordPtr(addr+2, branch)
+			whiles = append(whiles, addr+4)
+			prims = prims + 2
+			addr = addr + 4
+		case "REPEAT":
+			// compile branch and addr of begin
+			i := len(begins) - 1
+			beginaddr := begins[i]
+			begins = begins[:i]
+			branch, _ := f.Addr("BRANCH")
+			f.SetWordPtr(addr+2, branch)
+			f.SetWordPtr(addr+4, beginaddr)
+			prims = prims + 2
+			addr = addr + 4
+			i = len(whiles) - 1
+			whileaddr := whiles[i]
+			whiles = whiles[:i]
+			f.SetWordPtr(whileaddr, addr+2)
+		case "UNTIL":
+			i := len(begins) - 1
+			beginaddr := begins[i]
+			begins = begins[:i]
+			branch, _ := f.Addr("?BRANCH")
+			f.SetWordPtr(addr+2, branch)
+			f.SetWordPtr(addr+4, beginaddr)
+			prims = prims + 2
+			addr = addr + 4
+		case "IF":
+			doIF(f, addr, &ifs, "?BRANCH")
+			prims = prims + 2
+			addr = addr + 4
+		case "THEN":
+			/*
 				CALL addr addr IF addr addr THEN addrA
 				CALL addr addr QBRAN p_addrA addr addr addrA
 
 				Also things could be nested
-				*/
-				doTHEN(f, ifs, addr+2)
-				// +2 is because addr points to the previous word addr
-			case "ELSE":
-				/*
-				CALL addr addr IF addr ELSE addrA addr THEN addrB 
+			*/
+			doTHEN(f, ifs, addr+2)
+			// +2 is because addr points to the previous word addr
+		case "ELSE":
+			/*
+				CALL addr addr IF addr ELSE addrA addr THEN addrB
 				CALL addr addr QBRAN p_addrA addr BRAN p_addrB addrA addr addrB
-				*/
-				doTHEN(f, ifs, addr+6)
-				doIF(f, addr, &ifs, "BRANCH")
-				prims = prims + 2
-				addr = addr + 4
-			default:
-				var wa uint16
-				if j > 1 && iwords[j-1] == "doLIT" {
-					x, err := strconv.Atoi(word)
-					if err != nil {
-						e = err
-						return
-					}
-					wa = uint16(x)
-				} else {
-					x, err := f.Addr(word)
-					if err != nil {
-						e = err
-						fmt.Printf("ERROR: not adding \"%v\" because %v\n", name, err)
-						return
-					}
-					wa = uint16(x)
-			
+			*/
+			doTHEN(f, ifs, addr+6)
+			doIF(f, addr, &ifs, "BRANCH")
+			prims = prims + 2
+			addr = addr + 4
+		default:
+			var wa uint16
+			if j > 1 && iwords[j-1] == "doLIT" {
+				x, err := strconv.Atoi(word)
+				if err != nil {
+					e = err
+					return
 				}
-				addr = addr + 2
-				f.SetWordPtr(addr, wa)
-				prims = prims + 1
-				fmt.Printf("%x: %x %s\n", addr, wa, word)
+				wa = uint16(x)
+			} else {
+				x, err := f.Addr(word)
+				if err != nil {
+					e = err
+					fmt.Printf("ERROR: not adding \"%v\" because %v\n", name, err)
+					return
+				}
+				wa = uint16(x)
+
+			}
+			addr = addr + 2
+			f.SetWordPtr(addr, wa)
+			prims = prims + 1
+			fmt.Printf("%x: %x %s\n", addr, wa, word)
 		}
 		fmt.Printf("addr is %x\n", addr)
 	}
@@ -374,4 +374,4 @@ func (f *Forth) Pop() uint16 {
 	res := binary.LittleEndian.Uint16(f.Memory[f.SP:])
 	f.SP = f.SP + 2
 	return res
-}	
+}
