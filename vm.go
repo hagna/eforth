@@ -88,6 +88,9 @@ type Forth struct {
 
 	LAST uint16 // last name in name dictionary
 	NP   uint16 // bottom of name dictionary
+
+	_USER  uint16        // first user variable offset
+	macros map[string]fn //for actions that take place in the VM like _USER=_USER+2
 }
 
 type fn func()
@@ -107,7 +110,8 @@ func NewForth() *Forth {
 		prim2func:  make(map[string]fn),
 		pcode2word: make(map[uint16]string),
 		NP:         NAMEE,
-		LAST:       0}
+		LAST:       0,
+		_USER:      4 * CELLL}
 	fmt.Printf("NAMEE is %x\n", NAMEE)
 	f.AddPrimitives()
 	f.AddHiforth()
@@ -316,6 +320,10 @@ inf:
 		word = f.Frompcode(pcode)
 		fmt.Printf("WP %x IP %x pcode %x word \"%s\"\n", f.WP, f.IP, pcode, word)
 		err := f.CallFn(word)
+		if m, ok := f.macros[word]; ok {
+			fmt.Println("running macro", m, "for word", word)
+			m()
+		}
 		if err != nil {
 			fmt.Println(err)
 			break inf
