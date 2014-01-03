@@ -3,6 +3,7 @@ package eforth
 // following tutorial at http://www.offete.com/files/zeneForth.htm
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -37,7 +38,77 @@ const (
 	UPP   = EM - 256*CELLL // start of user area (UP0)
 	NAMEE = UPP - 8*CELLL  //name dictionary
 	CODEE = COLDD + US     // code dictionary
+	CALLL = 2
+	VERSION = 1
 )
+
+// this change could make it easier to port to new word sizes
+// but for now we'll use this
+func asint16(u uint16) int16 {
+	b := new(bytes.Buffer)
+	if err := binary.Write(b, binary.LittleEndian, &u); err != nil {
+		fmt.Println(err)
+	}
+	var res int16
+	if err := binary.Read(b, binary.LittleEndian, &res); err != nil {
+		fmt.Println(err)
+	}
+	return res
+}
+
+func asuint16(i int16) uint16 {
+	b := new(bytes.Buffer)
+	if err := binary.Write(b, binary.LittleEndian, &i); err != nil {
+		fmt.Println(err)
+	}
+	var res uint16
+	if err := binary.Read(b, binary.LittleEndian, &res); err != nil {
+		fmt.Println(err)
+	}
+	return res
+}
+
+type word [CELLL]byte // the word size
+
+func (v *word) uset(n uint) {
+	z := uint16(n)
+	b := new(bytes.Buffer)
+	if err := binary.Write(b, binary.LittleEndian, &z); err != nil {
+		fmt.Println(err)
+	}
+	for i := 0; i < CELLL; i++ {
+		v[i] = b.Bytes()[i]
+	}
+}
+
+func (v *word) set(n int) {
+	z := int16(n)
+	b := new(bytes.Buffer)
+	if err := binary.Write(b, binary.LittleEndian, &z); err != nil {
+		fmt.Println(err)
+	}
+	for i := 0; i < CELLL; i++ {
+		v[i] = b.Bytes()[i]
+	}
+}
+
+func (v *word) signed() int {
+	var res int16
+	if err := binary.Read(bytes.NewBuffer(v[:]), binary.LittleEndian, &res); err != nil {
+		fmt.Println(err)
+	}
+	return int(res)
+
+}
+
+func (v *word) unsigned() uint {
+	var res uint16
+	if err := binary.Read(bytes.NewBuffer(v[:]), binary.LittleEndian, &res); err != nil {
+		fmt.Println(err)
+	}
+	return uint(res)
+
+}
 
 // 76 13 e8 35 3 62 61 72 == *bar where bar is the last field and the others are the code reference and prev word reference
 type Forth struct {
@@ -177,7 +248,7 @@ func (f *Forth) AddWord(cdef string) (e error) {
 	startaddr := CODEE + (2 * (prims - 1))
 	addr := startaddr
 	name := all[1]
-	all[1] = ":"
+	all[1] = "doLIST"
 	iwords := all[1:]
 	ifs := []uint16{}
 	begins := []uint16{}
@@ -276,7 +347,7 @@ func (f *Forth) AddWord(cdef string) (e error) {
 		fmt.Printf("addr is %x\n", addr)
 	}
 
-	f.SetWordPtr(startaddr, 2) // CALL is 2
+	f.SetWordPtr(startaddr, CALLL) // CALL is 2
 	f.prim2addr[name] = startaddr
 	f.AddName(name, startaddr)
 	f.prims = prims

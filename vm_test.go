@@ -7,6 +7,29 @@ import (
 	"testing"
 )
 
+func TestWordSize(t *testing.T) {
+	w := word{}
+	w.uset(0xfffa)
+	if w.signed() > 0 {
+		t.Fatal("signed value should have been negative but it was", w.signed())
+	}
+	if w.unsigned() < 0 {
+		t.Fatal("unsigned was signed somehow")
+	}
+	t.Log("word", w, "signed", w.signed(), "unsigned", w.unsigned())
+	w.set(-23)
+	if w.signed() > 0 {
+		t.Fatal("signed value should have been negative but it was", w.signed())
+	}
+	if w.unsigned() < 0 {
+		t.Fatal("unsigned was signed somehow")
+	}
+	if w.unsigned() == 0 {
+		t.Fatal("shouldn't be zero")
+	}
+	t.Log("word", w, "signed", w.signed(), "unsigned", w.unsigned())
+}
+
 func TestFmt(t *testing.T) {
 	f := Forth{}
 	fmt.Println("hello world")
