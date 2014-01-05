@@ -109,7 +109,7 @@ func (f *Forth) Q_RX() {
 		f.Push(0)
 	} else {
 		f.Push(uint16(b))
-		f.Push(^uint16(0))
+		f.Push(asuint16(-1))
 	}
 	f._next()
 }
@@ -447,11 +447,11 @@ CODE  0<    ( n -- f )              \ Return true if n is negative.
       $_next
 */
 func (f *Forth) Zless() {
-	ax := f.Pop()
+	ax := asint16(f.Pop())
 	if ax >= 0 {
 		f.Push(0)
 	} else {
-		f.Push(0xffff)
+		f.Push(asuint16(-1))
 	}
 	f._next()
 }
