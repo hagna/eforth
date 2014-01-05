@@ -1,10 +1,10 @@
 package eforth
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
-	"errors"
 )
 
 var asm2forth map[string]string
@@ -38,6 +38,7 @@ func (f *Forth) compileWords(name string, words []string, labels map[string]uint
 		{"LABEL", func(w string, i int) error {
 			res := errors.New(fmt.Sprintf("No label for %s", w))
 			if addr, ok := labels[w]; ok {
+				//fmt.Printf("label address is %x\n", addr+startaddr)
 				setit(i, addr+startaddr)
 				return nil
 			}
@@ -63,12 +64,11 @@ func (f *Forth) compileWords(name string, words []string, labels map[string]uint
 			}
 			return res
 		}},
-
 	}
 	parseWord := func(word string, i int) error {
 		for _, j := range possible {
 			if err := j.method(word, i); err == nil {
-				fmt.Println(word, "is a", j.mtype)
+				//fmt.Println(word, j.mtype)
 				return nil
 			}
 		}
@@ -80,9 +80,11 @@ func (f *Forth) compileWords(name string, words []string, labels map[string]uint
 			return err
 		}
 	}
-	f.prim2addr[name] = startaddr
-	f.AddName(name, startaddr)
-	f.prims = f.prims + CELLL*uint16(len(words))
+	f.NewWord(name, startaddr)
+	nprims := uint16(len(words))
+	f.prims = f.prims + nprims
+	//fmt.Printf("%s %x %v\n", name, startaddr, words)
+	//fmt.Println(dumpmem(f, startaddr, CELLL*nprims))
 	return err
 }
 
@@ -108,11 +110,21 @@ func (f *Forth) WordFromASM(asm string) (err error) {
 			if i == j {
 				continue
 			}
-			return line[i+1:j]
+			return line[i+1 : j]
 		}
 		return "NOTAWORD"
 	}
-			
+
+	inlinestring := func(line string) []string {
+		i := strings.Index(line, "'")
+		j := strings.LastIndex(line, "'")
+		spart := line[i+1 : j]
+		res := []string{fmt.Sprintf("%d", (len(spart)))}
+		for _, v := range spart {
+			res = append(res, fmt.Sprintf("%d", byte(v)))
+		}
+		return res
+	}
 
 	for _, line := range strings.Split(asm, "\n") {
 		fields := strings.FieldsFunc(line, func(r rune) bool {
@@ -146,7 +158,6 @@ func (f *Forth) WordFromASM(asm string) (err error) {
 				}
 				name = getname(line)
 				vname := fields[len(fields)-1]
-				fmt.Println("name is", name, "asm name is", vname)
 				asm2forth[vname] = name
 				words = append(words, []string{"CALLL", "doLIST"}...)
 				break tokenloop
@@ -167,9 +178,13 @@ func (f *Forth) WordFromASM(asm string) (err error) {
 			case strings.HasSuffix(tok, ":") && tok == fields[0]:
 				label := tok
 				label = label[:len(label)-1]
-				labels[label] = uint16(len(words))
+				labels[label] = CELLL * uint16(len(words))
 			case tok == "DW":
 				words = append(words, toks...)
+				break tokenloop
+			case tok == "D$":
+				words = append(words, toks[0])
+				words = append(words, inlinestring(line)...)
 				break tokenloop
 			}
 		}
@@ -190,7 +205,7 @@ func (f *Forth) AddHiforth() {
 		{"CRR", 13},
 		{"ERR", 27},
 		{"BASEE", 10},
-		{"VOCSS", 8},
+		{"VOCSS", VOCSS},
 		{"MASKK", 0x07f1f},
 		{"LF", 10},
 		{"BKSPP", 8},
@@ -202,13 +217,12 @@ func (f *Forth) AddHiforth() {
 		{"EM", EM},
 		{"COLDD", COLDD},
 		{"SPP", SPP},
-		{"UPP", UPP},
 		{"NAMEE", NAMEE},
 		{"CODEE", CODEE},
 		{"CALLL", CALLL},
 		{"VERSION", VERSION},
-		{"UZERO", 99},      // not sure yet
-		{"ULAST-UZERO", 23},
+		{"UZERO", 99}, // not sure yet
+		{"ULAST-UZERO", 1},
 	}
 
 	for _, v := range constants {
@@ -219,6 +233,13 @@ func (f *Forth) AddHiforth() {
 	f.macros["#TIB"] = func() {
 		f._USER = f._USER + CELLL
 	}
+	f.macros["CONTEXT"] = func() {
+		f._USER = f._USER + VOCSS*CELLL
+	}
+	f.macros["CURRENT"] = func() {
+		f._USER = f._USER + CELLL
+	}
+
 	amap := []struct {
 		aword string
 		fword string
@@ -1869,5 +1890,50 @@ COLD1:		DW	DOLIT,UZERO,DOLIT,UPP
 			fmt.Println("ERROR: ", err)
 		}
 	}
+	QRX, _ := f.Addr("?RX")
+	TXSTO, _ := f.Addr("TX!")
+	ACCEP, _ := f.Addr("accept")
+	KTAP, _ := f.Addr("kTAP")
+	DOTOK, _ := f.Addr(".OK")
+	INTER, _ := f.Addr("$INTERPRET")
+	NUMBQ, _ := f.Addr("NUMBER?")
+	CTOP := CODEE + CELLL*f.prims
+	NTOP := f.NP
+	LASTN := f.LAST
+
+	initvars := []uint16{0, 0, 0, 0, //reserved
+		SPP,   //SP0
+		RPP,   //RP0
+		QRX,   //'?KEY
+		TXSTO, //'EMIT
+		ACCEP, //'EXPECT
+		KTAP,  //'TAP
+		TXSTO, //'ECHO
+		DOTOK, //'PROMPT
+		BASEE, //BASE
+		0,     //tmp
+		0,     //SPAN
+		0,     //>IN
+		0,     //#TIB
+		TIBB,  //TIB
+		0,     //CSP
+		INTER, //'EVAL
+		NUMBQ, //'NUMBER
+		0,     //HLD
+		0,     //HANDLER
+		0,     //CONTEXT pointer
+	}
+	for i := 0; i < VOCSS; i++ {
+		initvars = append(initvars, 0) //VOCSS DUP (0) vocabulary stack
+	}
+	therest := []uint16{
+		0,     //CURRENT pointer
+		0,     //vocabulary link pointer
+		CTOP,  //CP
+		NTOP,  //NP
+		LASTN, //LAST
+	}
+
+	initvars = append(initvars, therest...)
 
 }

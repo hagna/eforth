@@ -27,18 +27,20 @@ User variables    3F80H-3FFFH
 */
 
 const (
-	CELLL = 2              // size of cell
-	EM    = 0x04000        // top of memory
-	COLDD = 0x00100        // cold start vector
-	US    = 64 * CELLL     // user area size in cells
-	RTS   = 64 * CELLL     // return stack/TIB size
-	RPP   = EM - 8*CELLL   // start of return stack (RP0)
-	TIBB  = RPP - RTS      // terminal input buffer (TIB)
-	SPP   = TIBB - 8*CELLL // start of data stack (SP0)
-	UPP   = EM - 256*CELLL // start of user area (UP0)
-	NAMEE = UPP - 8*CELLL  //name dictionary
-	CODEE = COLDD + US     // code dictionary
-	CALLL = 2
+	BASEE   = 10 // default radix
+	CELLL   = 2  // size of cell
+	VOCSS   = 8
+	EM      = 0x04000        // top of memory
+	COLDD   = 0x00100        // cold start vector
+	US      = 64 * CELLL     // user area size in cells
+	RTS     = 64 * CELLL     // return stack/TIB size
+	RPP     = EM - 8*CELLL   // start of return stack (RP0)
+	TIBB    = RPP - RTS      // terminal input buffer (TIB)
+	SPP     = TIBB - 8*CELLL // start of data stack (SP0)
+	UPP     = EM - 256*CELLL // start of user area (UP0)
+	NAMEE   = UPP - 8*CELLL  //name dictionary
+	CODEE   = COLDD + US     // code dictionary
+	CALLL   = 2
 	VERSION = 1
 )
 
@@ -152,8 +154,9 @@ type Forth struct {
 	   and interpretting pcode.
 	*/
 
-	prims      uint16
+	prims      uint16 //used as definition counter or number of words
 	prim2addr  map[string]uint16
+	addr2word  map[uint16]string
 	prim2func  map[string]fn
 	pcode2word map[uint16]string
 
@@ -162,6 +165,12 @@ type Forth struct {
 
 	_USER  uint16        // first user variable offset
 	macros map[string]fn //for actions that take place in the VM like _USER=_USER+2
+}
+
+func (f *Forth) NewWord(name string, startaddr uint16) {
+	f.addr2word[startaddr] = name
+	f.prim2addr[name] = startaddr
+	f.AddName(name, startaddr)
 }
 
 type fn func()
@@ -178,6 +187,7 @@ func setwordptr(mem []byte, reg, value uint16) {
 func NewForth() *Forth {
 	f := &Forth{SP: SPP, RP: RPP,
 		prim2addr:  make(map[string]uint16),
+		addr2word:  make(map[uint16]string),
 		prim2func:  make(map[string]fn),
 		pcode2word: make(map[uint16]string),
 		NP:         NAMEE,
@@ -190,11 +200,10 @@ func NewForth() *Forth {
 }
 
 func (f *Forth) AddName(word string, addr uint16) {
-	fmt.Println("AddName(", word, ", ", addr, ")")
+	//fmt.Println("AddName(", word, ", ", addr, ")")
 	_len := uint16(len(word) / CELLL)  // rounded down cell count
 	f.NP = f.NP - ((_len + 3) * CELLL) // new header on cell boundary
 	i := f.NP
-	fmt.Printf("writing to memory address %x\n", i)
 	f.SetWordPtr(i, addr)
 	f.SetWordPtr(i+2, f.LAST)
 	f.LAST = uint16(i + 4)
@@ -211,7 +220,7 @@ func (f *Forth) AddPrim(word string, m fn) {
 	f.prim2addr[word] = addr
 	f.prim2func[word] = m
 	f.pcode2word[f.prims] = word
-	fmt.Printf("%x is \"%s\"\n", f.prims, word)
+	//fmt.Printf("%x is \"%s\"\n", f.prims, word)
 	f.SetWordPtr(addr, f.prims)
 	f.AddName(word, addr)
 }
@@ -250,101 +259,32 @@ func (f *Forth) AddWord(cdef string) (e error) {
 	name := all[1]
 	all[1] = "doLIST"
 	iwords := all[1:]
-	ifs := []uint16{}
-	begins := []uint16{}
-	whiles := []uint16{}
+	//fmt.Println("AddWord:", name)
 	for j, word := range iwords {
-		fmt.Println("word is ", word)
-		switch word {
-		case "BEGIN":
-			begins = append(begins, addr+2)
-			// get rid of +2 makes no sense
-		case "AGAIN":
-			i := len(begins) - 1
-			beginaddr := begins[i]
-			begins = begins[:i]
-			branch, _ := f.Addr("BRANCH")
-			f.SetWordPtr(addr+2, branch)
-			f.SetWordPtr(addr+4, beginaddr)
-			prims = prims + 2
-			addr = addr + 4
-		case "WHILE":
-			// compiles qbranch and addr after repeat
-			branch, _ := f.Addr("?BRANCH")
-			f.SetWordPtr(addr+2, branch)
-			whiles = append(whiles, addr+4)
-			prims = prims + 2
-			addr = addr + 4
-		case "REPEAT":
-			// compile branch and addr of begin
-			i := len(begins) - 1
-			beginaddr := begins[i]
-			begins = begins[:i]
-			branch, _ := f.Addr("BRANCH")
-			f.SetWordPtr(addr+2, branch)
-			f.SetWordPtr(addr+4, beginaddr)
-			prims = prims + 2
-			addr = addr + 4
-			i = len(whiles) - 1
-			whileaddr := whiles[i]
-			whiles = whiles[:i]
-			f.SetWordPtr(whileaddr, addr+2)
-		case "UNTIL":
-			i := len(begins) - 1
-			beginaddr := begins[i]
-			begins = begins[:i]
-			branch, _ := f.Addr("?BRANCH")
-			f.SetWordPtr(addr+2, branch)
-			f.SetWordPtr(addr+4, beginaddr)
-			prims = prims + 2
-			addr = addr + 4
-		case "IF":
-			doIF(f, addr, &ifs, "?BRANCH")
-			prims = prims + 2
-			addr = addr + 4
-		case "THEN":
-			/*
-				CALL addr addr IF addr addr THEN addrA
-				CALL addr addr QBRAN p_addrA addr addr addrA
-
-				Also things could be nested
-			*/
-			doTHEN(f, ifs, addr+2)
-			// +2 is because addr points to the previous word addr
-		case "ELSE":
-			/*
-				CALL addr addr IF addr ELSE addrA addr THEN addrB
-				CALL addr addr QBRAN p_addrA addr BRAN p_addrB addrA addr addrB
-			*/
-			doTHEN(f, ifs, addr+6)
-			doIF(f, addr, &ifs, "BRANCH")
-			prims = prims + 2
-			addr = addr + 4
-		default:
-			var wa uint16
-			if j > 1 && iwords[j-1] == "doLIT" {
-				x, err := strconv.Atoi(word)
-				if err != nil {
-					e = err
-					return
-				}
-				wa = uint16(x)
-			} else {
-				x, err := f.Addr(word)
-				if err != nil {
-					e = err
-					fmt.Printf("ERROR: not adding \"%v\" because %v\n", name, err)
-					return
-				}
-				wa = uint16(x)
-
+		fmt.Println("\t", word)
+		var wa uint16
+		if j > 1 && iwords[j-1] == "doLIT" {
+			x, err := strconv.Atoi(word)
+			if err != nil {
+				e = err
+				return
 			}
-			addr = addr + 2
-			f.SetWordPtr(addr, wa)
-			prims = prims + 1
-			fmt.Printf("%x: %x %s\n", addr, wa, word)
+			wa = uint16(x)
+		} else {
+			x, err := f.Addr(word)
+			if err != nil {
+				e = err
+				fmt.Printf("ERROR: not adding \"%v\" because %v\n", name, err)
+				return
+			}
+			wa = uint16(x)
+
 		}
-		fmt.Printf("addr is %x\n", addr)
+		addr = addr + 2
+		f.SetWordPtr(addr, wa)
+		prims = prims + 1
+		//fmt.Printf("%x: %x %s\n", addr, wa, word)
+		//fmt.Printf("addr is %x\n", addr)
 	}
 
 	f.SetWordPtr(startaddr, CALLL) // CALL is 2
@@ -365,7 +305,7 @@ func (f *Forth) Addr(word string) (res uint16, err error) {
 
 func (f *Forth) CallFn(word string) error {
 	m, ok := f.prim2func[word]
-	fmt.Printf("CallFn %v \"%s\"\n", m, word)
+	//fmt.Printf("CallFn %v \"%s\"\n", m, word)
 	if !ok {
 		return errors.New(fmt.Sprintf("No method found for \"%s\"", word))
 	}
@@ -378,21 +318,75 @@ func (f *Forth) Frompcode(pcode uint16) (res string) {
 	return
 }
 
+func (f *Forth) setupIP() error {
+	if IP, e := f.Addr("COLD"); e != nil {
+		return e
+	} else {
+		f.SetWordPtr(COLDD, IP)
+		f.IP = COLDD
+	}
+	f._next()
+	return nil
+}
+
+func (f *Forth) showstacks() {
+	fn := func(i, k uint16) string {
+		var res string
+		for j := k; j < i; j += 2 {
+			a := binary.LittleEndian.Uint16(f.Memory[j:])
+			res += fmt.Sprintf("%x ", a)
+		}
+		return res
+	}
+	a := "D: " + fn(SPP, f.SP)
+	b := "R: " + fn(RPP, f.RP)
+	fmt.Println(a + "\n" + b + "\n")
+}
+
 // this simulates the von neuman machine or processor
 func (f *Forth) Main() {
 	f.B_IO()
+	if e := f.setupIP(); e != nil {
+		fmt.Println(e)
+		return
+	}
 	fmt.Println("---------Main----------")
 	var pcode uint16
 	var word string
+	callstack := []string{}
+	callptr := 0
 inf:
 	for {
 		// simulate JMP to f.WP
 		pcode = f.WordPtr(f.WP)
 		word = f.Frompcode(pcode)
+		calling, ok := f.addr2word[f.WP]
+		if ok {
+			callstack = append(callstack, calling)
+			if word == "CALL" {
+				callptr += 1
+				fmt.Println(callstack[:callptr])
+			}
+		}
+
 		fmt.Printf("WP %x IP %x pcode %x word \"%s\"\n", f.WP, f.IP, pcode, word)
+		if word == "EXIT" {
+			callptr -= 1
+			callstack = callstack[:callptr]
+			fmt.Println(callstack[:callptr])
+		}
 		err := f.CallFn(word)
+		if f.SP > SPP {
+			fmt.Println("Main: stack underflow")
+			break inf
+		}
+		if f.RP > RPP {
+			fmt.Println("Main: return stack underflow")
+			break inf
+		}
+		f.showstacks()
 		if m, ok := f.macros[word]; ok {
-			fmt.Println("running macro", m, "for word", word)
+			//fmt.Println("running macro", m, "for word", word)
 			m()
 		}
 		if err != nil {

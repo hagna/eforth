@@ -271,7 +271,7 @@ func BadAddr(t *testing.T) {
 	and EXIT to loop through the high level forth till it finds primitives or
 	machine code code words instead of colon words to execute.
 */
-func TestMain(t *testing.T) {
+func TestOldMain(t *testing.T) {
 	f := NewForth()
 	called := false
 	f.AddPrim("BYE", func() {
@@ -332,15 +332,7 @@ func RunWord(word string, f *Forth, t *testing.T) {
 		called = true
 		f.BYE()
 	})
-	f.AddWord(fmt.Sprintf(": A %s BYE ;", word))
-	a, err := f.Addr("A")
-	fmt.Printf("Addr of doit is %x\n", a)
-	if err != nil {
-		t.Fatal(err)
-	}
-	f.SetWordPtr(COLDD, a)
-	f.IP = COLDD
-	f._next()
+	f.AddWord(fmt.Sprintf(": COLD %s BYE ;", word))
 	f.Main()
 	if !called {
 		t.Fatal("Didn't call BYE function")
@@ -350,7 +342,6 @@ func RunWord(word string, f *Forth, t *testing.T) {
 // IF THEN ought to compile correctly when AddWord is called
 func TestIfThen(t *testing.T) {
 	f := NewForth()
-	f.AddWord(": ?DUP ( w -- w w | 0 ) DUP IF DUP THEN ;")
 	a, _ := f.Addr("?DUP")
 	for _, j := range f.Memory[a : a+16] {
 		fmt.Printf("%x ", j)
@@ -369,7 +360,7 @@ func TestIfThen(t *testing.T) {
 }
 
 // nested IF THEN ought to compile correctly when AddWord is called
-func TestIfThenNest(t *testing.T) {
+func TestNestIfThen(t *testing.T) {
 	f := NewForth()
 	f.AddWord(": nest ( w -- w w | 0 ) DUP IF DUP IF DUP + THEN DUP + THEN ;")
 	a, _ := f.Addr("nest")
@@ -405,7 +396,7 @@ func dumpmem(f *Forth, i, k uint16) string {
 }
 
 // IF THEN ELSE ought to compile correctly when AddWord is called
-func TestIfThenElse(t *testing.T) {
+func TestElseIfThen(t *testing.T) {
 	f := NewForth()
 	f.AddWord(": ?DUP ( a w -- a | w ) DUP IF DROP ELSE SWAP DROP THEN ;")
 	a, _ := f.Addr("?DUP")

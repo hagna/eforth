@@ -212,14 +212,18 @@ _next1:ADD   BP,2                    \ yes, pop the index
       $_next
 */
 func (f *Forth) Next() {
-	v := f.WordPtr(f.RP)
+	v := asint16(f.WordPtr(f.RP))
 	v = v - 1
-	f.SetWordPtr(f.RP, v)
+	f.SetWordPtr(f.RP, asuint16(v))
+	fmt.Println("prim: Next() f.RP is", f.WordPtr(f.RP))
 	if v >= 0 {
 		f.IP = f.WordPtr(f.IP)
+		fmt.Println(">= 0 so IP = *IP")
 	} else {
+		fmt.Println("< 0 so IP += 2 and RP += 2 ")
 		f.RP = f.RP + 2
 		f.IP = f.IP + 2
+		fmt.Println("RP is", f.RP, "and f.IP is", f.IP)
 	}
 	f._next()
 }
