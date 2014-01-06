@@ -12,14 +12,14 @@ var asm2forth map[string]string
 func (f *Forth) compileWords(name string, words []string, labels map[string]uint16) (err error) {
 	err = nil
 	startaddr := CODEE + (CELLL * f.prims)
-	setit := func(i int, addr uint16) {
-		f.SetWordPtr(startaddr+uint16(i*CELLL), addr)
+	setit := func(i uint16, addr uint16) {
+		f.SetWordPtr(startaddr+i*CELLL, addr)
 	}
 	possible := []struct {
 		mtype  string
-		method func(w string, i int) error
+		method func(w string, i uint16) error
 	}{
-		{"PRIM", func(w string, i int) error {
+		{"PRIM", func(w string, i uint16) error {
 			if addr, e := f.Addr(w); e == nil {
 				setit(i, addr)
 				return nil
@@ -27,7 +27,7 @@ func (f *Forth) compileWords(name string, words []string, labels map[string]uint
 				return e
 			}
 		}},
-		{"NUM", func(w string, i int) error {
+		{"NUM", func(w string, i uint16) error {
 			if addr, e := strconv.ParseInt(w, 0, 0); e == nil {
 				setit(i, uint16(addr))
 				return nil
@@ -35,7 +35,7 @@ func (f *Forth) compileWords(name string, words []string, labels map[string]uint
 				return e
 			}
 		}},
-		{"LABEL", func(w string, i int) error {
+		{"LABEL", func(w string, i uint16) error {
 			res := errors.New(fmt.Sprintf("No label for %s", w))
 			if addr, ok := labels[w]; ok {
 				//fmt.Printf("label address is %x\n", addr+startaddr)
@@ -44,7 +44,7 @@ func (f *Forth) compileWords(name string, words []string, labels map[string]uint
 			}
 			return res
 		}},
-		{"ASM", func(w string, i int) error {
+		{"ASM", func(w string, i uint16) error {
 			res := errors.New(fmt.Sprintf("ERROR: No word corresponds to %s", w))
 			if name, ok := asm2forth[w]; ok {
 				if addr, e := f.Addr(name); e == nil {
@@ -56,7 +56,7 @@ func (f *Forth) compileWords(name string, words []string, labels map[string]uint
 			}
 			return res
 		}},
-		{"CHR", func(w string, i int) error {
+		{"CHR", func(w string, i uint16) error {
 			res := errors.New(fmt.Sprintf("could not find character in %s", w))
 			if strings.HasPrefix(w, "'") && strings.HasSuffix(w, "'") {
 				setit(i, uint16(byte(w[1])))
@@ -65,23 +65,43 @@ func (f *Forth) compileWords(name string, words []string, labels map[string]uint
 			return res
 		}},
 	}
-	parseWord := func(word string, i int) error {
+	parseWord := func(word string, i uint16) (n uint16, err error) {
+		n = 0
+		fmt.Println("i is ", i, "word is", word)
 		for _, j := range possible {
 			if err := j.method(word, i); err == nil {
 				//fmt.Println(word, j.mtype)
-				return nil
+				// for inline strings
+				if j.mtype == "CHR" && len(word) > 3 {
+					fmt.Println("we've got an inline string")
+					word = word[1:len(word)-1]
+					l := len(word)
+					f.Memory[startaddr+i*CELLL] = byte(l)
+					fmt.Println("length is", l)
+					fmt.Println("word is", word)
+					for k := 0; k < l; k++ {
+						f.Memory[startaddr+i*CELLL+1+uint16(k)] = word[k]
+					}
+					n = uint16((l/CELLL) + 1)
+					return n, nil
+				} else {
+					return 1, nil
+				}
 			}
 		}
-		return errors.New(fmt.Sprintf("no way to parse %s", word))
+		return n, errors.New(fmt.Sprintf("no way to parse %s", word))
 	}
-	for i, word := range words {
-		if err = parseWord(word, i); err != nil {
+	var nprims uint16
+	nprims = 0
+	for _, word := range words {
+		if n, err := parseWord(word, nprims); err != nil {
 			fmt.Printf("Could not add %s, defined as %v, because %v\n", name, words, err)
 			return err
+		} else {
+			nprims += n
 		}
 	}
 	f.NewWord(name, startaddr)
-	nprims := uint16(len(words))
 	f.prims = f.prims + nprims
 	//fmt.Printf("%s %x %v\n", name, startaddr, words)
 	//fmt.Println(dumpmem(f, startaddr, CELLL*nprims))
@@ -171,15 +191,11 @@ func (f *Forth) WordFromASM(asm string) (err error) {
 		return "NOTAWORD"
 	}
 
-	inlinestring := func(line string) []string {
+	inlinestring := func(line string) string {
 		i := strings.Index(line, "'")
 		j := strings.LastIndex(line, "'")
-		spart := line[i+1 : j]
-		res := []string{fmt.Sprintf("%d", (len(spart)))}
-		for _, v := range spart {
-			res = append(res, fmt.Sprintf("%d", byte(v)))
-		}
-		return res
+		spart := line[i : j+1] 
+		return spart
 	}
 
 	for _, line := range strings.Split(asm, "\n") {
@@ -240,7 +256,7 @@ func (f *Forth) WordFromASM(asm string) (err error) {
 				break tokenloop
 			case tok == "D$":
 				words = append(words, toks[0])
-				words = append(words, inlinestring(line)...)
+				words = append(words, inlinestring(line))
 				break tokenloop
 			}
 		}

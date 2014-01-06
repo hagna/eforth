@@ -332,7 +332,10 @@ func RunWord(word string, f *Forth, t *testing.T) {
 		called = true
 		f.BYE()
 	})
-	f.AddWord(fmt.Sprintf(": COLD %s BYE ;", word))
+	UZERO, _ := f.Addr("UZERO")
+	b, _ := f.Addr("ULAST-UZERO")
+	UPP, _ := f.Addr("UPP")
+	f.AddWord(fmt.Sprintf("doLIST COLD doLIT %d doLIT %d doLIT %d CMOVE %s BYE EXIT", UZERO, UPP, b, word))
 	f.Main()
 	if !called {
 		t.Fatal("Didn't call BYE function")

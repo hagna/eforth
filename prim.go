@@ -19,7 +19,6 @@ func (f *Forth) AddPrimitives() {
 		{"TX!", f.B_TX},
 		{"EXECUTE", f.Execute},
 		{"doLIT", f.doLIT},
-		{";", f.EXIT},
 		{"EXIT", f.EXIT},
 		{"next", f.Next},
 		{"?branch", f.Q_branch},
@@ -66,7 +65,7 @@ CODE  !IO   ( -- )                  \ Initialize the serial I/O devices.
 func (f *Forth) B_IO() {
 	f.input = bufio.NewReader(os.Stdin)
 	f.output = bufio.NewWriter(os.Stdout)
-	//f._next()
+	f._next()
 }
 
 /*
@@ -129,6 +128,7 @@ func (f *Forth) B_TX() {
 	out := f.output.(*bufio.Writer)
 	c := f.Pop()
 	fmt.Fprintf(out, "%c", rune(c))
+	fmt.Println("output:", c, fmt.Sprintf("%c", rune(c)))
 	err := out.Flush()
 	if err != nil {
 		fmt.Println(err)
@@ -215,15 +215,15 @@ func (f *Forth) Next() {
 	v := asint16(f.WordPtr(f.RP))
 	v = v - 1
 	f.SetWordPtr(f.RP, asuint16(v))
-	fmt.Println("prim: Next() f.RP is", f.WordPtr(f.RP))
+	//fmt.Println("prim: Next() f.RP is", f.WordPtr(f.RP))
 	if v >= 0 {
 		f.IP = f.WordPtr(f.IP)
-		fmt.Println(">= 0 so IP = *IP")
+		//fmt.Println(">= 0 so IP = *IP")
 	} else {
-		fmt.Println("< 0 so IP += 2 and RP += 2 ")
+		//fmt.Println("< 0 so IP += 2 and RP += 2 ")
 		f.RP = f.RP + 2
 		f.IP = f.IP + 2
-		fmt.Println("RP is", f.RP, "and f.IP is", f.IP)
+		//fmt.Println("RP is", f.RP, "and f.IP is", f.IP)
 	}
 	f._next()
 }
@@ -527,6 +527,6 @@ func (f *Forth) UMplus() {
 		cf = 1
 	}
 	f.Push(asuint16(r))
-	f.Push(asuint16(cf))
+	f.Push(cf)
 	f._next()
 }

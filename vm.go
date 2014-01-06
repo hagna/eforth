@@ -259,7 +259,7 @@ func (f *Forth) AddWord(cdef string) (e error) {
 	name := all[1]
 	all[1] = "doLIST"
 	iwords := all[1:]
-	//fmt.Println("AddWord:", name)
+	fmt.Println("AddWord:", name)
 	for j, word := range iwords {
 		fmt.Println("\t", word)
 		var wa uint16
@@ -283,8 +283,8 @@ func (f *Forth) AddWord(cdef string) (e error) {
 		addr = addr + 2
 		f.SetWordPtr(addr, wa)
 		prims = prims + 1
-		//fmt.Printf("%x: %x %s\n", addr, wa, word)
-		//fmt.Printf("addr is %x\n", addr)
+		fmt.Printf("%x: %x %s\n", addr, wa, word)
+		fmt.Printf("addr is %x\n", addr)
 	}
 
 	f.SetWordPtr(startaddr, CALLL) // CALL is 2
@@ -345,7 +345,6 @@ func (f *Forth) showstacks() {
 
 // this simulates the von neuman machine or processor
 func (f *Forth) Main() {
-	f.B_IO()
 	if e := f.setupIP(); e != nil {
 		fmt.Println(e)
 		return
@@ -372,6 +371,9 @@ inf:
 		fmt.Printf("WP %x IP %x pcode %x word \"%s\"\n", f.WP, f.IP, pcode, word)
 		if word == "EXIT" {
 			callptr -= 1
+			if callptr < 0 {
+				callptr = 0
+			}
 			callstack = callstack[:callptr]
 			fmt.Println(callstack[:callptr])
 		}
@@ -384,7 +386,7 @@ inf:
 			fmt.Println("Main: return stack underflow")
 			break inf
 		}
-		f.showstacks()
+		//f.showstacks()
 		if m, ok := f.macros[word]; ok {
 			//fmt.Println("running macro", m, "for word", word)
 			m()
