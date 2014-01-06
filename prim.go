@@ -517,8 +517,8 @@ CODE  UM+   ( w w -- w cy )
       $_next
 */
 func (f *Forth) UMplus() {
-	b := f.Pop()
-	a := f.Pop()
+	b := asint16(f.Pop())
+	a := asint16(f.Pop())
 	r := a + b
 	var cf uint16
 	cf = 0
@@ -526,7 +526,7 @@ func (f *Forth) UMplus() {
 	if r32 > uint32(r) {
 		cf = 1
 	}
-	f.Push(r)
-	f.Push(cf)
+	f.Push(asuint16(r))
+	f.Push(asuint16(cf))
 	f._next()
 }

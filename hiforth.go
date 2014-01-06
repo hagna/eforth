@@ -88,6 +88,62 @@ func (f *Forth) compileWords(name string, words []string, labels map[string]uint
 	return err
 }
 
+func (f *Forth) doUserVariables() {
+	QRX, _ := f.Addr("?RX")
+	TXSTO, _ := f.Addr("TX!")
+	ACCEP, _ := f.Addr("accept")
+	KTAP, _ := f.Addr("kTAP")
+	DOTOK, _ := f.Addr(".OK")
+	INTER, _ := f.Addr("$INTERPRET")
+	NUMBQ, _ := f.Addr("NUMBER?")
+	CTOP := CODEE + CELLL*f.prims
+	NTOP := f.NP
+	LASTN := f.LAST
+
+	initvars := []uint16{0, 0, 0, 0, //reserved
+		SPP,   //SP0
+		RPP,   //RP0
+		QRX,   //'?KEY
+		TXSTO, //'EMIT
+		ACCEP, //'EXPECT
+		KTAP,  //'TAP
+		TXSTO, //'ECHO
+		DOTOK, //'PROMPT
+		BASEE, //BASE
+		0,     //tmp
+		0,     //SPAN
+		0,     //>IN
+		0,     //#TIB
+		TIBB,  //TIB
+		0,     //CSP
+		INTER, //'EVAL
+		NUMBQ, //'NUMBER
+		0,     //HLD
+		0,     //HANDLER
+		0,     //CONTEXT pointer
+	}
+	for i := 0; i < VOCSS; i++ {
+		initvars = append(initvars, 0) //VOCSS DUP (0) vocabulary stack
+	}
+	therest := []uint16{
+		0,     //CURRENT pointer
+		0,     //vocabulary link pointer
+		CTOP,  //CP
+		NTOP,  //NP
+		LASTN, //LAST
+	}
+
+	initvars = append(initvars, therest...)
+	UZERO := uint16(0)
+	f.prim2addr["UZERO"] = UZERO
+	f.prim2addr["ULAST-UZERO"] = uint16(CELLL*len(initvars))
+	for i, v := range initvars {
+		dstp := UZERO+uint16(i)*CELLL
+		f.SetWordPtr(dstp, v)
+	}
+
+}
+
 func (f *Forth) WordFromASM(asm string) (err error) {
 	words := []string{}
 	labels := make(map[string]uint16)
@@ -189,6 +245,7 @@ func (f *Forth) WordFromASM(asm string) (err error) {
 			}
 		}
 	}
+	f.doUserVariables()
 	err = f.compileWords(name, words, labels)
 	return err
 
@@ -221,8 +278,6 @@ func (f *Forth) AddHiforth() {
 		{"CODEE", CODEE},
 		{"CALLL", CALLL},
 		{"VERSION", VERSION},
-		{"UZERO", 99}, // not sure yet
-		{"ULAST-UZERO", 1},
 	}
 
 	for _, v := range constants {
@@ -1890,50 +1945,5 @@ COLD1:		DW	DOLIT,UZERO,DOLIT,UPP
 			fmt.Println("ERROR: ", err)
 		}
 	}
-	QRX, _ := f.Addr("?RX")
-	TXSTO, _ := f.Addr("TX!")
-	ACCEP, _ := f.Addr("accept")
-	KTAP, _ := f.Addr("kTAP")
-	DOTOK, _ := f.Addr(".OK")
-	INTER, _ := f.Addr("$INTERPRET")
-	NUMBQ, _ := f.Addr("NUMBER?")
-	CTOP := CODEE + CELLL*f.prims
-	NTOP := f.NP
-	LASTN := f.LAST
-
-	initvars := []uint16{0, 0, 0, 0, //reserved
-		SPP,   //SP0
-		RPP,   //RP0
-		QRX,   //'?KEY
-		TXSTO, //'EMIT
-		ACCEP, //'EXPECT
-		KTAP,  //'TAP
-		TXSTO, //'ECHO
-		DOTOK, //'PROMPT
-		BASEE, //BASE
-		0,     //tmp
-		0,     //SPAN
-		0,     //>IN
-		0,     //#TIB
-		TIBB,  //TIB
-		0,     //CSP
-		INTER, //'EVAL
-		NUMBQ, //'NUMBER
-		0,     //HLD
-		0,     //HANDLER
-		0,     //CONTEXT pointer
-	}
-	for i := 0; i < VOCSS; i++ {
-		initvars = append(initvars, 0) //VOCSS DUP (0) vocabulary stack
-	}
-	therest := []uint16{
-		0,     //CURRENT pointer
-		0,     //vocabulary link pointer
-		CTOP,  //CP
-		NTOP,  //NP
-		LASTN, //LAST
-	}
-
-	initvars = append(initvars, therest...)
-
+	
 }
