@@ -215,15 +215,15 @@ func (f *Forth) Next() {
 	v := asint16(f.WordPtr(f.RP))
 	v = v - 1
 	f.SetWordPtr(f.RP, asuint16(v))
-	//fmt.Println("prim: Next() f.RP is", f.WordPtr(f.RP))
+	fmt.Printf("prim: Next() *f.RP is %x\n", f.WordPtr(f.RP))
 	if v >= 0 {
 		f.IP = f.WordPtr(f.IP)
-		//fmt.Println(">= 0 so IP = *IP")
+		fmt.Printf("%x >= 0 so IP = *IP = %x\n", v, f.IP)
 	} else {
-		//fmt.Println("< 0 so IP += 2 and RP += 2 ")
-		f.RP = f.RP + 2
-		f.IP = f.IP + 2
-		//fmt.Println("RP is", f.RP, "and f.IP is", f.IP)
+		fmt.Println(v, "< 0 so IP += 2 and RP += 2 ")
+		f.RP = f.RP + CELLL 
+		f.IP = f.IP + CELLL
+		fmt.Printf("RP, IP is %x, %x\n", f.RP, f.IP)
 	}
 	f._next()
 }
@@ -517,8 +517,8 @@ CODE  UM+   ( w w -- w cy )
       $_next
 */
 func (f *Forth) UMplus() {
-	b := asint16(f.Pop())
-	a := asint16(f.Pop())
+	b := f.Pop()
+	a := f.Pop()
 	r := a + b
 	var cf uint16
 	cf = 0
@@ -526,7 +526,7 @@ func (f *Forth) UMplus() {
 	if r32 > uint32(r) {
 		cf = 1
 	}
-	f.Push(asuint16(r))
+	f.Push(r)
 	f.Push(cf)
 	f._next()
 }

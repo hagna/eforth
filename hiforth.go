@@ -11,6 +11,7 @@ var asm2forth map[string]string
 
 func (f *Forth) compileWords(name string, words []string, labels map[string]uint16) (err error) {
 	err = nil
+	fmt.Println("compileWords:", name, words)
 	startaddr := CODEE + (CELLL * f.prims)
 	setit := func(i uint16, addr uint16) {
 		f.SetWordPtr(startaddr+i*CELLL, addr)
@@ -67,7 +68,6 @@ func (f *Forth) compileWords(name string, words []string, labels map[string]uint
 	}
 	parseWord := func(word string, i uint16) (n uint16, err error) {
 		n = 0
-		fmt.Println("i is ", i, "word is", word)
 		for _, j := range possible {
 			if err := j.method(word, i); err == nil {
 				//fmt.Println(word, j.mtype)
@@ -82,7 +82,8 @@ func (f *Forth) compileWords(name string, words []string, labels map[string]uint
 					for k := 0; k < l; k++ {
 						f.Memory[startaddr+i*CELLL+1+uint16(k)] = word[k]
 					}
-					n = uint16((l/CELLL) + 1)
+					l += 1
+					n = uint16((l+1)/CELLL)
 					return n, nil
 				} else {
 					return 1, nil
@@ -1926,7 +1927,7 @@ WORS2:		DW	EXIT
 
 		$COLON	2,'hi',HI
 		DW	STOIO,CR		;initialize I/O
-		D$	DOTQP,'eForth v'	;model
+		D$	DOTQP,'eForth '	;model
 		DW	BASE,AT,HEX		;save radix
 		DW	VERSN,BDIGS,DIG,DIG
 		DW	DOLIT,'.',HOLD

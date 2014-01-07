@@ -386,7 +386,7 @@ inf:
 			fmt.Println("Main: return stack underflow")
 			break inf
 		}
-		//f.showstacks()
+		f.showstacks()
 		if m, ok := f.macros[word]; ok {
 			//fmt.Println("running macro", m, "for word", word)
 			m()
