@@ -3,7 +3,6 @@ package eforth
 import (
 	"bufio"
 	"fmt"
-	"os"
 )
 
 func (f *Forth) AddPrimitives() {
@@ -63,8 +62,8 @@ CODE  !IO   ( -- )                  \ Initialize the serial I/O devices.
 */
 // initialize IO
 func (f *Forth) B_IO() {
-	f.input = bufio.NewReader(os.Stdin)
-	f.output = bufio.NewWriter(os.Stdout)
+	f.b_input = bufio.NewReader(f.Input)
+	f.b_output = bufio.NewWriter(f.Output)
 	f._next()
 }
 
@@ -101,7 +100,7 @@ QRX3: PUSH  BX
 // RX may need to be non-blocking receive
 // returns either false or char true
 func (f *Forth) Q_RX() {
-	in := f.input.(*bufio.Reader)
+	in := f.b_input
 	b, err := in.ReadByte()
 	if err != nil {
 		fmt.Println("could not read Byte", err)
@@ -125,10 +124,10 @@ TX1:  MOV   AH,6                    \ MS-DOS Direct Console I/O
 */
 // ( c -- ) send the character on the data stack
 func (f *Forth) B_TX() {
-	out := f.output.(*bufio.Writer)
+	out := f.b_output
 	c := f.Pop()
 	fmt.Fprintf(out, "%c", rune(c))
-	fmt.Println("output:", c, fmt.Sprintf("%c", rune(c)))
+	//fmt.Println("output:", c, fmt.Sprintf("%c", rune(c)))
 	err := out.Flush()
 	if err != nil {
 		fmt.Println(err)
@@ -215,15 +214,15 @@ func (f *Forth) Next() {
 	v := asint16(f.WordPtr(f.RP))
 	v = v - 1
 	f.SetWordPtr(f.RP, asuint16(v))
-	fmt.Printf("prim: Next() *f.RP is %x\n", f.WordPtr(f.RP))
+	//fmt.Printf("prim: Next() *f.RP is %x\n", f.WordPtr(f.RP))
 	if v >= 0 {
 		f.IP = f.WordPtr(f.IP)
-		fmt.Printf("%x >= 0 so IP = *IP = %x\n", v, f.IP)
+		//fmt.Printf("%x >= 0 so IP = *IP = %x\n", v, f.IP)
 	} else {
-		fmt.Println(v, "< 0 so IP += 2 and RP += 2 ")
-		f.RP = f.RP + CELLL 
+		//fmt.Println(v, "< 0 so IP += 2 and RP += 2 ")
+		f.RP = f.RP + CELLL
 		f.IP = f.IP + CELLL
-		fmt.Printf("RP, IP is %x, %x\n", f.RP, f.IP)
+		//fmt.Printf("RP, IP is %x, %x\n", f.RP, f.IP)
 	}
 	f._next()
 }

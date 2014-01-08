@@ -37,7 +37,7 @@ func TestFmt(t *testing.T) {
 }
 
 func TestPushPop(t *testing.T) {
-	f := NewForth()
+	f := New(nil, nil)
 	f.Push(0x100)
 	f.IP = f.Pop()
 	if f.IP != 0x100 {
@@ -46,7 +46,7 @@ func TestPushPop(t *testing.T) {
 }
 
 func TestWordPtr(t *testing.T) {
-	f := NewForth()
+	f := New(nil, nil)
 	w := f.WordPtr(10)
 	if w != 0 {
 		t.Fatal("oughta be 0")
@@ -59,7 +59,7 @@ func TestWordPtr(t *testing.T) {
 }
 
 func TestRegLower(t *testing.T) {
-	f := NewForth()
+	f := New(nil, nil)
 	z := f.RegLower(0xdead)
 	if z != 0xad {
 		t.Fatal("should be ad but got", z)
@@ -89,7 +89,7 @@ func TestFields(t *testing.T) {
 }
 
 func TestAddPrim(t *testing.T) {
-	f := NewForth()
+	f := New(nil, nil)
 	a := func() {}
 	f.AddPrim("BYE", a)
 	code := f.WordPtr(CODEE) // first word in code dictionary
@@ -99,7 +99,7 @@ func TestAddPrim(t *testing.T) {
 }
 
 func TestAddPrimCall(t *testing.T) {
-	f := NewForth()
+	f := New(nil, nil)
 	called := false
 	f.AddPrim("BYE", func() { called = true })
 	f.CallFn("BYE")
@@ -109,7 +109,7 @@ func TestAddPrimCall(t *testing.T) {
 }
 
 func TestMorePrim(t *testing.T) {
-	f := NewForth()
+	f := New(nil, nil)
 	f.prims = 0
 	f.AddPrim("BYE", func() {})
 	f.AddPrim("JK", func() {})
@@ -124,7 +124,7 @@ func TestMorePrim(t *testing.T) {
 }
 
 func TestPcode2Prim(t *testing.T) {
-	f := NewForth()
+	f := New(nil, nil)
 	f.prims = 0
 	f.AddPrim("BYE", func() {})
 	f.AddPrim("JK", func() {})
@@ -136,7 +136,7 @@ func TestPcode2Prim(t *testing.T) {
 }
 
 func TestAddPrimCall2(t *testing.T) {
-	f := NewForth()
+	f := New(nil, nil)
 	f.IP = 0
 	o := f.IP
 	f.AddPrim("NEXT", f._next)
@@ -148,7 +148,7 @@ func TestAddPrimCall2(t *testing.T) {
 }
 
 func TestAddPrimAddr(t *testing.T) {
-	f := NewForth()
+	f := New(nil, nil)
 	f.prims = 0
 	a := func() {}
 	f.AddPrim("BYE", a)
@@ -160,7 +160,7 @@ func TestAddPrimAddr(t *testing.T) {
 
 // Adding a colon word creates a new word named after the first string after the colon
 func TestAddColon(t *testing.T) {
-	f := NewForth()
+	f := New(nil, nil)
 	f.AddWord(": nop ;")
 	aa, _ := f.Addr("nop")
 	if aa == 0 {
@@ -182,7 +182,7 @@ func Uint16sEqual(a, b []uint16) bool {
 
 // A colon word also ought to go in the code dictionary correctly
 func TestAddColonLst(t *testing.T) {
-	f := NewForth()
+	f := New(nil, nil)
 	f.AddWord(": nop ;")
 	good := []uint16{}
 	for _, v := range []string{"CALL", ":", ";"} {
@@ -199,7 +199,7 @@ func TestAddColonLst(t *testing.T) {
 
 // ought to be able to build definitions on others
 func TestAddWords(t *testing.T) {
-	f := NewForth()
+	f := New(nil, nil)
 	f.AddWord(`: nop ;`)
 	f.AddWord(`: bar nop ;`)
 	good := []uint16{}
@@ -223,7 +223,7 @@ func TestAddWords(t *testing.T) {
 
 // ought to include newlines without messing up the code
 func TestAddWordNL(t *testing.T) {
-	f := NewForth()
+	f := New(nil, nil)
 	f.AddWord(`: nop ;`)
 	f.AddWord(`: bar 
 nop 
@@ -243,7 +243,7 @@ nop
 
 // ignore comments for now
 func TestAddWordComments(t *testing.T) {
-	f := NewForth()
+	f := New(nil, nil)
 	f.AddWord(": nop ( -- ) ;")
 	good := []uint16{}
 	for _, v := range []string{"CALL", ":", ";"} {
@@ -259,7 +259,7 @@ func TestAddWordComments(t *testing.T) {
 }
 
 func BadAddr(t *testing.T) {
-	f := NewForth()
+	f := New(nil, nil)
 	_, err := f.Addr("noexiste")
 	if err == nil {
 		t.Fatal("should have thrown an error about a nonexistant word")
@@ -272,7 +272,7 @@ func BadAddr(t *testing.T) {
 	machine code code words instead of colon words to execute.
 */
 func TestOldMain(t *testing.T) {
-	f := NewForth()
+	f := New(nil, nil)
 	called := false
 	f.AddPrim("BYE", func() {
 		fmt.Println("hello from the BYE primitive")
@@ -306,7 +306,7 @@ func TestOldMain(t *testing.T) {
    They start on CELLL boundaries 16 bits or 2 bytes as of this writing
 */
 func TestNamedict(t *testing.T) {
-	f := NewForth()
+	f := New(nil, nil)
 	s := f.Memory[NAMEE-8 : NAMEE]
 	fmt.Println("range is ", NAMEE-8, "to", NAMEE)
 	good := []byte{0x80, 0x1, 0, 0, 3, 0x42, 0x59, 0x45} // ASSUME BYE is the first primitive
@@ -316,7 +316,7 @@ func TestNamedict(t *testing.T) {
 }
 
 func TestNamedDictColons(t *testing.T) {
-	f := NewForth()
+	f := New(nil, nil)
 	oldNP := f.NP
 	f.AddWord(": nop ;")
 	newNP := f.NP
@@ -344,7 +344,7 @@ func RunWord(word string, f *Forth, t *testing.T) {
 
 // IF THEN ought to compile correctly when AddWord is called
 func TestIfThen(t *testing.T) {
-	f := NewForth()
+	f := New(nil, nil)
 	a, _ := f.Addr("?DUP")
 	for _, j := range f.Memory[a : a+16] {
 		fmt.Printf("%x ", j)
@@ -364,7 +364,7 @@ func TestIfThen(t *testing.T) {
 
 // nested IF THEN ought to compile correctly when AddWord is called
 func TestNestIfThen(t *testing.T) {
-	f := NewForth()
+	f := New(nil, nil)
 	f.AddWord(": nest ( w -- w w | 0 ) DUP IF DUP IF DUP + THEN DUP + THEN ;")
 	a, _ := f.Addr("nest")
 	for _, j := range f.Memory[a : a+16] {
@@ -380,7 +380,7 @@ func TestNestIfThen(t *testing.T) {
 }
 
 func TestLifo(t *testing.T) {
-	f := NewForth()
+	f := New(nil, nil)
 	f.Push(10)
 	f.Push(20)
 	s := f.Pop()
@@ -400,7 +400,7 @@ func dumpmem(f *Forth, i, k uint16) string {
 
 // IF THEN ELSE ought to compile correctly when AddWord is called
 func TestElseIfThen(t *testing.T) {
-	f := NewForth()
+	f := New(nil, nil)
 	f.AddWord(": ?DUP ( a w -- a | w ) DUP IF DROP ELSE SWAP DROP THEN ;")
 	a, _ := f.Addr("?DUP")
 	for _, j := range f.Memory[a : a+16] {
@@ -428,7 +428,7 @@ func TestElseIfThen(t *testing.T) {
 
 // test begin again infinite loop
 func TestBeginAgain(t *testing.T) {
-	f := NewForth()
+	f := New(nil, nil)
 	word := ": forever BEGIN DUP AGAIN ;"
 	f.AddWord(word)
 	f.Push(99)
@@ -453,7 +453,7 @@ func TestBeginAgain(t *testing.T) {
 
 // begin until loops
 func TestBeginUntil(t *testing.T) {
-	f := NewForth()
+	f := New(nil, nil)
 	word := ": oneiter BEGIN doLIT 1 UNTIL doLIT 2 ;"
 	f.AddWord(word)
 	RunWord("oneiter", f, t)
@@ -464,7 +464,7 @@ func TestBeginUntil(t *testing.T) {
 }
 
 func TestBeginUntil10(t *testing.T) {
-	f := NewForth()
+	f := New(nil, nil)
 	called := 0
 	f.AddPrim("CALLME", func() {
 		called += 1
@@ -479,7 +479,7 @@ func TestBeginUntil10(t *testing.T) {
 }
 
 func TestBeginWhileRepeat(t *testing.T) {
-	f := NewForth()
+	f := New(nil, nil)
 	called := 0
 	f.AddPrim("CALLME", func() {
 		called += 1

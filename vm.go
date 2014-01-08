@@ -3,10 +3,12 @@ package eforth
 // following tutorial at http://www.offete.com/files/zeneForth.htm
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"io"
 	"strconv"
 	"strings"
 )
@@ -131,8 +133,11 @@ type Forth struct {
 	RP uint16
 	WP uint16
 
-	input  interface{}
-	output interface{}
+	Input  io.Reader
+	Output io.Writer
+
+	b_input  *bufio.Reader
+	b_output *bufio.Writer
 
 	Memory [EM]byte
 
@@ -184,7 +189,7 @@ func setwordptr(mem []byte, reg, value uint16) {
 	binary.LittleEndian.PutUint16(mem[reg:], value)
 }
 
-func NewForth() *Forth {
+func New(r io.Reader, w io.Writer) *Forth {
 	f := &Forth{SP: SPP, RP: RPP,
 		prim2addr:  make(map[string]uint16),
 		addr2word:  make(map[uint16]string),
@@ -192,8 +197,9 @@ func NewForth() *Forth {
 		pcode2word: make(map[uint16]string),
 		NP:         NAMEE,
 		LAST:       0,
-		_USER:      4 * CELLL}
-	fmt.Printf("NAMEE is %x\n", NAMEE)
+		_USER:      4 * CELLL,
+		Input:      r,
+		Output:     w}
 	f.AddPrimitives()
 	f.AddHiforth()
 	return f
@@ -364,18 +370,18 @@ inf:
 			callstack = append(callstack, calling)
 			if word == "CALL" {
 				callptr += 1
-				fmt.Println(callstack[:callptr])
+				//fmt.Println(callstack[:callptr])
 			}
 		}
 
-		fmt.Printf("WP %x IP %x pcode %x word \"%s\"\n", f.WP, f.IP, pcode, word)
+		//fmt.Printf("WP %x IP %x pcode %x word \"%s\"\n", f.WP, f.IP, pcode, word)
 		if word == "EXIT" {
 			callptr -= 1
 			if callptr < 0 {
 				callptr = 0
 			}
 			callstack = callstack[:callptr]
-			fmt.Println(callstack[:callptr])
+			//fmt.Println(callstack[:callptr])
 		}
 		err := f.CallFn(word)
 		if f.SP > SPP {
@@ -386,7 +392,7 @@ inf:
 			fmt.Println("Main: return stack underflow")
 			break inf
 		}
-		f.showstacks()
+		//f.showstacks()
 		if m, ok := f.macros[word]; ok {
 			//fmt.Println("running macro", m, "for word", word)
 			m()

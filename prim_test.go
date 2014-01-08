@@ -1,7 +1,6 @@
 package eforth
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/binary"
 	"strings"
@@ -9,7 +8,7 @@ import (
 )
 
 func TestDoLIST(t *testing.T) {
-	f := NewForth()
+	f := New(nil, nil)
 	f.IP = 99
 	binary.LittleEndian.PutUint16(f.Memory[23:], 0xdead)
 	f.Push(23) // this is the return address
@@ -21,9 +20,9 @@ func TestDoLIST(t *testing.T) {
 }
 
 func TestRx(t *testing.T) {
-	f := NewForth()
+	f := New(nil, nil)
+	f.Input = strings.NewReader("t")
 	f.B_IO()
-	f.input = bufio.NewReader(strings.NewReader("t"))
 	f.Q_RX()
 	tf := f.Pop()
 	c := f.Pop()
@@ -36,9 +35,9 @@ func TestRx(t *testing.T) {
 }
 
 func TestRx2(t *testing.T) {
-	f := NewForth()
+	f := New(nil, nil)
+	f.Input = strings.NewReader("")
 	f.B_IO()
-	f.input = bufio.NewReader(strings.NewReader(""))
 	f.Q_RX()
 	tf := f.Pop()
 	c := f.Pop()
@@ -51,7 +50,7 @@ func TestRx2(t *testing.T) {
 }
 
 func TestDoLit(t *testing.T) {
-	f := NewForth()
+	f := New(nil, nil)
 	f.B_IO()
 	f.IP = 30
 	binary.LittleEndian.PutUint16(f.Memory[f.IP:], 0xdead)
@@ -66,10 +65,10 @@ func TestDoLit(t *testing.T) {
 }
 
 func TestTx(t *testing.T) {
-	f := NewForth()
-	f.B_IO()
+	f := New(nil, nil)
 	s := new(bytes.Buffer)
-	f.output = bufio.NewWriter(s)
+	f.Output = s
+	f.B_IO()
 	f.Push(99)
 	f.B_TX()
 	val := s.String()

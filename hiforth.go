@@ -11,7 +11,7 @@ var asm2forth map[string]string
 
 func (f *Forth) compileWords(name string, words []string, labels map[string]uint16) (err error) {
 	err = nil
-	fmt.Println("compileWords:", name, words)
+	//fmt.Println("compileWords:", name, words)
 	startaddr := CODEE + (CELLL * f.prims)
 	setit := func(i uint16, addr uint16) {
 		f.SetWordPtr(startaddr+i*CELLL, addr)
@@ -73,17 +73,17 @@ func (f *Forth) compileWords(name string, words []string, labels map[string]uint
 				//fmt.Println(word, j.mtype)
 				// for inline strings
 				if j.mtype == "CHR" && len(word) > 3 {
-					fmt.Println("we've got an inline string")
-					word = word[1:len(word)-1]
+					//fmt.Println("we've got an inline string")
+					word = word[1 : len(word)-1]
 					l := len(word)
 					f.Memory[startaddr+i*CELLL] = byte(l)
-					fmt.Println("length is", l)
-					fmt.Println("word is", word)
+					//fmt.Println("length is", l)
+					//fmt.Println("word is", word)
 					for k := 0; k < l; k++ {
 						f.Memory[startaddr+i*CELLL+1+uint16(k)] = word[k]
 					}
 					l += 1
-					n = uint16((l+1)/CELLL)
+					n = uint16((l + 1) / CELLL)
 					return n, nil
 				} else {
 					return 1, nil
@@ -157,9 +157,9 @@ func (f *Forth) doUserVariables() {
 	initvars = append(initvars, therest...)
 	UZERO := uint16(0)
 	f.prim2addr["UZERO"] = UZERO
-	f.prim2addr["ULAST-UZERO"] = uint16(CELLL*len(initvars))
+	f.prim2addr["ULAST-UZERO"] = uint16(CELLL * len(initvars))
 	for i, v := range initvars {
-		dstp := UZERO+uint16(i)*CELLL
+		dstp := UZERO + uint16(i)*CELLL
 		f.SetWordPtr(dstp, v)
 	}
 
@@ -195,7 +195,7 @@ func (f *Forth) WordFromASM(asm string) (err error) {
 	inlinestring := func(line string) string {
 		i := strings.Index(line, "'")
 		j := strings.LastIndex(line, "'")
-		spart := line[i : j+1] 
+		spart := line[i : j+1]
 		return spart
 	}
 
@@ -1962,5 +1962,5 @@ COLD1:		DW	DOLIT,UZERO,DOLIT,UPP
 			fmt.Println("ERROR: ", err)
 		}
 	}
-	
+
 }
