@@ -53,6 +53,7 @@ CODE BYE    ( -- , exit Forth )
       INT   020H                    \ return to DOS
 */
 func (f *Forth) BYE() {
+	fmt.Println("BYE: here am I")
 	f.IP = 0xffff
 }
 
@@ -103,9 +104,10 @@ func (f *Forth) Q_RX() {
 	in := f.b_input
 	b, err := in.ReadByte()
 	if err != nil {
-		fmt.Println("could not read Byte", err)
+		//fmt.Println("could not read Byte", err)
 		f.Push(0)
 	} else {
+		fmt.Println("RX:", b, string(b))
 		f.Push(uint16(b))
 		f.Push(asuint16(-1))
 	}

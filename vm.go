@@ -169,7 +169,7 @@ type Forth struct {
 	NP   uint16 // bottom of name dictionary
 
 	_USER  uint16        // first user variable offset
-	macros map[string]fn //for actions that take place in the VM like _USER=_USER+2
+	macros map[string]fn // need this for hardcoding "_USER = ..." for #TIB, CONTEXT, and CURRENT user vars
 }
 
 func (f *Forth) NewWord(name string, startaddr uint16) {
@@ -340,7 +340,7 @@ func (f *Forth) showstacks() {
 		var res string
 		for j := k; j < i; j += 2 {
 			a := binary.LittleEndian.Uint16(f.Memory[j:])
-			res += fmt.Sprintf("%x ", a)
+			res = fmt.Sprintf("%x ", a) + res
 		}
 		return res
 	}
@@ -362,26 +362,27 @@ func (f *Forth) Main() {
 	callptr := 0
 inf:
 	for {
+		fmt.Printf("WP %x IP %x\n", f.WP, f.IP)
 		// simulate JMP to f.WP
 		pcode = f.WordPtr(f.WP)
 		word = f.Frompcode(pcode)
 		calling, ok := f.addr2word[f.WP]
 		if ok {
+			fmt.Printf("%s -->\n", calling)
 			callstack = append(callstack, calling)
 			if word == "CALL" {
 				callptr += 1
-				//fmt.Println(callstack[:callptr])
+				fmt.Println(callstack[:callptr])
 			}
-		}
-
-		//fmt.Printf("WP %x IP %x pcode %x word \"%s\"\n", f.WP, f.IP, pcode, word)
+		} 
+		fmt.Printf("pcode %x word \"%s\" *IP %x\n", pcode, word, f.WordPtr(f.IP))
 		if word == "EXIT" {
 			callptr -= 1
 			if callptr < 0 {
 				callptr = 0
 			}
 			callstack = callstack[:callptr]
-			//fmt.Println(callstack[:callptr])
+			fmt.Println(callstack[:callptr])
 		}
 		err := f.CallFn(word)
 		if f.SP > SPP {
@@ -392,11 +393,7 @@ inf:
 			fmt.Println("Main: return stack underflow")
 			break inf
 		}
-		//f.showstacks()
-		if m, ok := f.macros[word]; ok {
-			//fmt.Println("running macro", m, "for word", word)
-			m()
-		}
+		f.showstacks()
 		if err != nil {
 			fmt.Println(err)
 			break inf

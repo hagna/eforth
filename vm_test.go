@@ -335,6 +335,10 @@ func RunWord(word string, f *Forth, t *testing.T) {
 	UZERO, _ := f.Addr("UZERO")
 	b, _ := f.Addr("ULAST-UZERO")
 	UPP, _ := f.Addr("UPP")
+	_, e := f.Addr(word) 
+	if e != nil {
+		t.Fatal("RunWord: no word found", word)
+	}
 	f.AddWord(fmt.Sprintf("doLIST COLD doLIT %d doLIT %d doLIT %d CMOVE %s BYE EXIT", UZERO, UPP, b, word))
 	f.Main()
 	if !called {

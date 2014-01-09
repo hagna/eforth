@@ -246,7 +246,12 @@ func (f *Forth) WordFromASM(asm string) (err error) {
 				vname := fields[3]
 				asm2forth[vname] = name
 				words = append(words, []string{"CALLL", "doLIST", "doUSER", strconv.Itoa(int(f._USER))}...)
+                fmt.Println("user variable", name," offset is", f._USER)
 				f._USER += CELLL
+                if m, ok := f.macros[name]; ok {
+                    fmt.Println("running macro", m, "for word", name)
+                    m()
+                }
 				break tokenloop
 			case strings.HasSuffix(tok, ":") && tok == fields[0]:
 				label := tok
@@ -264,6 +269,7 @@ func (f *Forth) WordFromASM(asm string) (err error) {
 	}
 	f.doUserVariables()
 	err = f.compileWords(name, words, labels)
+	f.doUserVariables()
 	return err
 
 }
