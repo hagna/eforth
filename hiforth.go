@@ -34,6 +34,16 @@ func (c *codeList) addLabel(name string, offset uint16, li int) {
 	slice[len(slice)-1].li = li
 }
 
+
+func (c *codeList) addString(offset uint16, s string) {
+	c.add("STR", offset, 0)
+	slice := *c
+	res := []byte{}
+	res = append(res, byte(len(s)))
+	res = append(res, []byte(s)...)
+	slice[len(slice)-1].val = res
+}
+
 func (f *Forth) compileWords(name string, words []string, labels map[string]uint16) (err error) {
 	err = nil
 	//fmt.Println("compileWords:", name, words)
@@ -94,7 +104,7 @@ func (f *Forth) compileWords(name string, words []string, labels map[string]uint
 		}},
 		{"CHR", func(w string, i uint16) error {
 			res := errors.New(fmt.Sprintf("could not find character in %s", w))
-			if strings.HasPrefix(w, "'") && strings.HasSuffix(w, "'") {
+			if strings.HasPrefix(w, "'") && strings.HasSuffix(w, "'") && len(w) == 3 {
 				setit(w, i, uint16(byte(w[1])))
 				fmt.Println(w)
 				return nil
@@ -116,6 +126,7 @@ func (f *Forth) compileWords(name string, words []string, labels map[string]uint
 					f.Memory[targ] = byte(l)
 					//fmt.Println("length is", l)
 					//fmt.Println("word is", word)
+					codelist.addString(startaddr+i*CELLL, word)
 					for k := 0; k < l; k++ {
 						f.Memory[startaddr+i*CELLL+1+uint16(k)] = word[k]
 					}
