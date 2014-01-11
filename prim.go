@@ -107,7 +107,7 @@ func (f *Forth) Q_RX() {
 		//fmt.Println("could not read Byte", err)
 		f.Push(0)
 	} else {
-		fmt.Println("RX:", b, string(b))
+		//fmt.Println("RX:", b, string(b))
 		f.Push(uint16(b))
 		f.Push(asuint16(-1))
 	}
@@ -129,7 +129,7 @@ func (f *Forth) B_TX() {
 	out := f.b_output
 	c := f.Pop()
 	fmt.Fprintf(out, "%c", rune(c))
-	//fmt.Println("output:", c, fmt.Sprintf("%c", rune(c)))
+	//	fmt.Println("output:", c, fmt.Sprintf("%c", rune(c)))
 	err := out.Flush()
 	if err != nil {
 		fmt.Println(err)

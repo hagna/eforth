@@ -1,6 +1,7 @@
 package eforth
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"strconv"
@@ -9,12 +10,40 @@ import (
 
 var asm2forth map[string]string
 
+type codeitem struct {
+	val    []byte
+	offset uint16
+	name   string
+	li     int
+}
+
+type codeList []codeitem
+
+func (c *codeList) add(name string, offset uint16, addr uint16) {
+	var twobyte [CELLL]byte
+	val := []byte{}
+	val = append(val, twobyte[0:]...)
+	binary.LittleEndian.PutUint16(val, addr)
+	res := codeitem{val, offset, name, -1}
+	*c = append(*c, res)
+}
+
+func (c *codeList) addLabel(name string, offset uint16, li int) {
+	c.add(name, offset, 0)
+	slice := *c
+	slice[len(slice)-1].li = li
+}
+
 func (f *Forth) compileWords(name string, words []string, labels map[string]uint16) (err error) {
 	err = nil
 	//fmt.Println("compileWords:", name, words)
 	startaddr := CODEE + (CELLL * f.prims)
-	setit := func(i uint16, addr uint16) {
-		f.SetWordPtr(startaddr+i*CELLL, addr)
+	var codelist codeList
+	setit := func(name string, i uint16, addr uint16) {
+		targ := startaddr + i*CELLL
+		f.SetWordPtr(targ, addr)
+		fmt.Printf("%x: ", targ)
+		codelist.add(name, targ, addr)
 	}
 	possible := []struct {
 		mtype  string
@@ -22,7 +51,8 @@ func (f *Forth) compileWords(name string, words []string, labels map[string]uint
 	}{
 		{"PRIM", func(w string, i uint16) error {
 			if addr, e := f.Addr(w); e == nil {
-				setit(i, addr)
+				setit(w, i, addr)
+				fmt.Println(w)
 				return nil
 			} else {
 				return e
@@ -30,7 +60,8 @@ func (f *Forth) compileWords(name string, words []string, labels map[string]uint
 		}},
 		{"NUM", func(w string, i uint16) error {
 			if addr, e := strconv.ParseInt(w, 0, 0); e == nil {
-				setit(i, uint16(addr))
+				setit(w, i, uint16(addr))
+				fmt.Println(w)
 				return nil
 			} else {
 				return e
@@ -40,7 +71,10 @@ func (f *Forth) compileWords(name string, words []string, labels map[string]uint
 			res := errors.New(fmt.Sprintf("No label for %s", w))
 			if addr, ok := labels[w]; ok {
 				//fmt.Printf("label address is %x\n", addr+startaddr)
-				setit(i, addr+startaddr)
+				targ := addr + startaddr
+				setit(w, i, targ)
+				codelist.addLabel(w, i, int(addr))
+				fmt.Printf("[%x] %s\n", targ, w)
 				return nil
 			}
 			return res
@@ -49,7 +83,8 @@ func (f *Forth) compileWords(name string, words []string, labels map[string]uint
 			res := errors.New(fmt.Sprintf("ERROR: No word corresponds to %s", w))
 			if name, ok := asm2forth[w]; ok {
 				if addr, e := f.Addr(name); e == nil {
-					setit(i, addr)
+					setit(w, i, addr)
+					fmt.Println(w)
 					return e
 				} else {
 					return e
@@ -60,7 +95,8 @@ func (f *Forth) compileWords(name string, words []string, labels map[string]uint
 		{"CHR", func(w string, i uint16) error {
 			res := errors.New(fmt.Sprintf("could not find character in %s", w))
 			if strings.HasPrefix(w, "'") && strings.HasSuffix(w, "'") {
-				setit(i, uint16(byte(w[1])))
+				setit(w, i, uint16(byte(w[1])))
+				fmt.Println(w)
 				return nil
 			}
 			return res
@@ -76,7 +112,8 @@ func (f *Forth) compileWords(name string, words []string, labels map[string]uint
 					//fmt.Println("we've got an inline string")
 					word = word[1 : len(word)-1]
 					l := len(word)
-					f.Memory[startaddr+i*CELLL] = byte(l)
+					targ := startaddr + i*CELLL
+					f.Memory[targ] = byte(l)
 					//fmt.Println("length is", l)
 					//fmt.Println("word is", word)
 					for k := 0; k < l; k++ {
@@ -94,6 +131,7 @@ func (f *Forth) compileWords(name string, words []string, labels map[string]uint
 	}
 	var nprims uint16
 	nprims = 0
+	fmt.Printf("\n%x: %s\n", startaddr, name)
 	for _, word := range words {
 		if n, err := parseWord(word, nprims); err != nil {
 			fmt.Printf("Could not add %s, defined as %v, because %v\n", name, words, err)
@@ -102,6 +140,7 @@ func (f *Forth) compileWords(name string, words []string, labels map[string]uint
 			nprims += n
 		}
 	}
+	fmt.Println("codelist is", codelist)
 	f.NewWord(name, startaddr)
 	f.prims = f.prims + nprims
 	//fmt.Printf("%s %x %v\n", name, startaddr, words)
@@ -246,12 +285,12 @@ func (f *Forth) WordFromASM(asm string) (err error) {
 				vname := fields[3]
 				asm2forth[vname] = name
 				words = append(words, []string{"CALLL", "doLIST", "doUSER", strconv.Itoa(int(f._USER))}...)
-                fmt.Println("user variable", name," offset is", f._USER)
+				fmt.Println("user variable", name, " offset is", f._USER)
 				f._USER += CELLL
-                if m, ok := f.macros[name]; ok {
-                    fmt.Println("running macro", m, "for word", name)
-                    m()
-                }
+				if m, ok := f.macros[name]; ok {
+					fmt.Println("running macro", m, "for word", name)
+					m()
+				}
 				break tokenloop
 			case strings.HasSuffix(tok, ":") && tok == fields[0]:
 				label := tok

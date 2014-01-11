@@ -128,10 +128,11 @@ type Forth struct {
 
 	*/
 
-	IP uint16
-	SP uint16
-	RP uint16
-	WP uint16
+	IP  uint16
+	SP  uint16
+	RP  uint16
+	WP  uint16
+	aWP uint16
 
 	Input  io.Reader
 	Output io.Writer
@@ -359,30 +360,32 @@ func (f *Forth) Main() {
 	var pcode uint16
 	var word string
 	callstack := []string{}
-	callptr := 0
+	watchme := "find"
+	watch := false
 inf:
 	for {
-		fmt.Printf("WP %x IP %x\n", f.WP, f.IP)
 		// simulate JMP to f.WP
 		pcode = f.WordPtr(f.WP)
 		word = f.Frompcode(pcode)
-		calling, ok := f.addr2word[f.WP]
-		if ok {
-			fmt.Printf("%s -->\n", calling)
-			callstack = append(callstack, calling)
-			if word == "CALL" {
-				callptr += 1
-				fmt.Println(callstack[:callptr])
+		calling, _ := f.addr2word[f.WP]
+		if calling == watchme {
+			watch = true
+		}
+		if watch {
+			calling, ok := f.addr2word[f.WP]
+			if ok {
+				fmt.Printf("&WP %x %s IP %x\n", f.aWP, calling, f.IP)
+			} else {
+				fmt.Printf("&WP %x [IP] %x IP %x\n", f.aWP, f.WordPtr(f.IP), f.IP)
 			}
-		} 
-		fmt.Printf("pcode %x word \"%s\" *IP %x\n", pcode, word, f.WordPtr(f.IP))
-		if word == "EXIT" {
-			callptr -= 1
-			if callptr < 0 {
-				callptr = 0
+			calling, ok = f.addr2word[f.WP]
+			if ok {
+				callstack = append(callstack, "\n"+calling+"-->")
+			} else {
+				callstack = append(callstack, word)
 			}
-			callstack = callstack[:callptr]
-			fmt.Println(callstack[:callptr])
+			fmt.Println(word)
+			fmt.Printf("pcode %x word %s arg %x\n", pcode, word, f.WordPtr(f.IP))
 		}
 		err := f.CallFn(word)
 		if f.SP > SPP {
@@ -393,7 +396,9 @@ inf:
 			fmt.Println("Main: return stack underflow")
 			break inf
 		}
-		f.showstacks()
+		if watch {
+			f.showstacks()
+		}
 		if err != nil {
 			fmt.Println(err)
 			break inf
@@ -426,6 +431,7 @@ lodsw
 jmp ax
 */
 func (f *Forth) _next() {
+	f.aWP = f.IP
 	f.WP = f.WordPtr(f.IP)
 	f.IP += 2
 }
