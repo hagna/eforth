@@ -18,18 +18,18 @@ type codeitem struct {
 }
 
 type codeList struct {
-	lst *[]codeitem
+	lst         *[]codeitem
 	startoffset uint16
 }
 
 func (c *codeList) add(name string, addr uint16) {
 	slice := *c.lst
-	
+
 	offset := c.startoffset
 	if len(slice) >= 1 {
 		prev := slice[len(slice)-1]
 		offset = prev.offset + uint16(len(prev.val))
-	}	
+	}
 	var twobyte [CELLL]byte
 	val := []byte{}
 	val = append(val, twobyte[0:]...)
@@ -43,10 +43,10 @@ func (c *codeList) println() {
 	for _, k := range slice {
 		fmt.Printf("%x: ", k.offset)
 		s := k.name
-		if k.name == "STRING" {
+		if k.name == "STR" {
 			l := k.val[0]
-			s = string(k.val[1:])[:l]
-			s = fmt.Sprintf("%x%s", l, "'" + s + "'")
+			s = string(k.val[1:])
+			s = fmt.Sprintf("%x%s", l, "'"+s+"'")
 		}
 		fmt.Printf("%s", s)
 		if k.li != -1 {
@@ -70,8 +70,8 @@ func (c *codeList) size() uint16 {
 	slice := *c.lst
 	last := slice[len(slice)-1]
 	j := uint16(len(last.val)) + last.offset
-	return j - c.startoffset 
-}	
+	return j - c.startoffset
+}
 
 func (c *codeList) addLabel(name string, li int) {
 	c.add(name, 0)
@@ -79,20 +79,18 @@ func (c *codeList) addLabel(name string, li int) {
 	slice[len(slice)-1].li = li
 }
 
-
 func (c *codeList) addString(s string) {
-	s = s[1:len(s)-1]
-	c.add("STRING", 0)
+	s = s[1 : len(s)-1]
+	c.add("STR", 0)
 	slice := *c.lst
 	res := []byte{}
 	res = append(res, byte(len(s)))
 	res = append(res, []byte(s)...)
-	if len(res) % CELLL == (CELLL / 2) {
+	if len(res)%CELLL == (CELLL / 2) {
 		res = append(res, byte(0))
 	}
 	slice[len(slice)-1].val = res
 }
-
 
 // gives labelled items the right addresses
 // which we don't do till the codelist is complete
@@ -104,11 +102,12 @@ func (c *codeList) fixLabels() {
 			binary.LittleEndian.PutUint16(val.val, off)
 		}
 	}
-	
+
 }
 
-func (f *Forth) compileWords(name string, words []string, labels map[string]uint16) (err error) {
+func (f *Forth) compileWords(name string, words []string, labels map[string]uint16, bitmask int) (err error) {
 	err = nil
+	fmt.Println("compileWords:", name, words, labels, bitmask)
 	startaddr := CODEE + (CELLL * f.prims)
 	codelist := codeList{&[]codeitem{}, startaddr}
 	possible := []struct {
@@ -159,7 +158,7 @@ func (f *Forth) compileWords(name string, words []string, labels map[string]uint
 			}
 			return res
 		}},
-		{"STRING", func(w string) error {
+		{"STR", func(w string) error {
 			res := errors.New(fmt.Sprintf("could not find string in %s", w))
 			if strings.HasPrefix(w, "'") && strings.HasSuffix(w, "'") && len(w) > 3 {
 				codelist.addString(w)
@@ -183,16 +182,16 @@ func (f *Forth) compileWords(name string, words []string, labels map[string]uint
 		if err := parseWord(word); err != nil {
 			fmt.Printf("Could not add %s, defined as %v, because %v\n", name, words, err)
 			return err
-		} 
+		}
 	}
 	codelist.fixLabels()
 	codelist.intoForth(f)
 	codelist.println()
-	nprims = codelist.size() / CELLL	
-	if codelist.size() % CELLL == 1 {
+	nprims = codelist.size() / CELLL
+	if codelist.size()%CELLL == 1 {
 		fmt.Println("BUGBUG ***** odd length for colon def", codelist.size(), codelist.lst)
 	}
-	f.NewWord(name, startaddr)
+	f.NewWord(name, startaddr, bitmask)
 	f.prims = f.prims + nprims
 	return err
 }
@@ -256,11 +255,13 @@ func (f *Forth) doUserVariables() {
 func (f *Forth) WordFromASM(asm string) (err error) {
 	words := []string{}
 	labels := make(map[string]uint16)
+	bitmask := 0
 	name := ""
 	err = nil
 	restart := func() {
 		words = []string{}
 		labels = make(map[string]uint16)
+		bitmask = 0
 	}
 	getname := func(line string) string {
 		for _, sep := range []string{"'", `"`} {
@@ -312,19 +313,25 @@ func (f *Forth) WordFromASM(asm string) (err error) {
 			switch {
 			case tok == "$COLON":
 				if name != "" {
-					if err = f.compileWords(name, words, labels); err != nil {
+					if err = f.compileWords(name, words, labels, bitmask); err != nil {
 						return err
 					}
 					restart()
 				}
 				name = getname(line)
 				vname := fields[len(fields)-1]
+				if strings.Contains(line, "COMPO+") {
+					bitmask |= COMPO
+				}
+				if strings.Contains(line, "IMEDD+") {
+					bitmask |= IMEDD
+				}
 				asm2forth[vname] = name
 				words = append(words, []string{"CALLL", "doLIST"}...)
 				break tokenloop
 			case tok == "$USER":
 				if name != "" {
-					if err = f.compileWords(name, words, labels); err != nil {
+					if err = f.compileWords(name, words, labels, bitmask); err != nil {
 						return err
 					}
 					restart()
@@ -356,7 +363,7 @@ func (f *Forth) WordFromASM(asm string) (err error) {
 		}
 	}
 	f.doUserVariables()
-	err = f.compileWords(name, words, labels)
+	err = f.compileWords(name, words, labels, bitmask)
 	f.doUserVariables()
 	return err
 
@@ -374,12 +381,12 @@ func (f *Forth) AddHiforth() {
 		{"ERR", 27},
 		{"BASEE", 10},
 		{"VOCSS", VOCSS},
-		{"MASKK", 0x07f1f},
+		{"MASKK", MASKK},
 		{"LF", 10},
 		{"BKSPP", 8},
 		{"TIC", 39},
-		{"COMPO", 0x040},
-		{"IMEDD", 0x080},
+		{"COMPO", COMPO},
+		{"IMEDD", IMEDD},
 		{"TIBB", TIBB},
 		{"RPP", RPP},
 		{"EM", EM},

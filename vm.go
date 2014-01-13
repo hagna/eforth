@@ -44,6 +44,9 @@ const (
 	CODEE   = COLDD + US     // code dictionary
 	CALLL   = 2
 	VERSION = 1
+	COMPO   = 0x040
+	IMEDD   = 0x080
+	MASKK   = 0x07F1F
 )
 
 // this change could make it easier to port to new word sizes
@@ -173,10 +176,10 @@ type Forth struct {
 	macros map[string]fn // need this for hardcoding "_USER = ..." for #TIB, CONTEXT, and CURRENT user vars
 }
 
-func (f *Forth) NewWord(name string, startaddr uint16) {
+func (f *Forth) NewWord(name string, startaddr uint16, bitmask int) {
 	f.addr2word[startaddr] = name
 	f.prim2addr[name] = startaddr
-	f.AddName(name, startaddr)
+	f.AddName(name, startaddr, bitmask)
 }
 
 type fn func()
@@ -206,15 +209,21 @@ func New(r io.Reader, w io.Writer) *Forth {
 	return f
 }
 
-func (f *Forth) AddName(word string, addr uint16) {
-	//fmt.Println("AddName(", word, ", ", addr, ")")
+func (f *Forth) AddName(word string, addr uint16, bitmask int) {
+	fmt.Println("AddName(", word, ", ", addr, bitmask, ")")
 	_len := uint16(len(word) / CELLL)  // rounded down cell count
 	f.NP = f.NP - ((_len + 3) * CELLL) // new header on cell boundary
 	i := f.NP
 	f.SetWordPtr(i, addr)
 	f.SetWordPtr(i+2, f.LAST)
 	f.LAST = uint16(i + 4)
-	f.Memory[f.LAST] = byte(len(word))
+	l := byte(len(word))
+	if bitmask != 0 {
+		l = byte(bitmask) | l
+		fmt.Println("new len is ", l)
+		fmt.Println("bitmask is", bitmask)
+	}
+	f.Memory[f.LAST] = l
 	for j, c := range word {
 		f.Memory[int(i)+5+j] = byte(c)
 	}
@@ -229,7 +238,7 @@ func (f *Forth) AddPrim(word string, m fn) {
 	f.pcode2word[f.prims] = word
 	//fmt.Printf("%x is \"%s\"\n", f.prims, word)
 	f.SetWordPtr(addr, f.prims)
-	f.AddName(word, addr)
+	f.AddName(word, addr, 0)
 }
 
 func (f *Forth) RemoveComments(a string) (b string) {
@@ -296,7 +305,7 @@ func (f *Forth) AddWord(cdef string) (e error) {
 
 	f.SetWordPtr(startaddr, CALLL) // CALL is 2
 	f.prim2addr[name] = startaddr
-	f.AddName(name, startaddr)
+	f.AddName(name, startaddr, 0)
 	f.prims = prims
 	return
 }
