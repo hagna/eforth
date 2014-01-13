@@ -360,7 +360,7 @@ func (f *Forth) Main() {
 	var pcode uint16
 	var word string
 	callstack := []string{}
-	watchme := "find"
+	watchme := ":"
 	watch := false
 inf:
 	for {

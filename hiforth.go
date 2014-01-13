@@ -17,84 +17,133 @@ type codeitem struct {
 	li     int
 }
 
-type codeList []codeitem
+type codeList struct {
+	lst *[]codeitem
+	startoffset uint16
+}
 
-func (c *codeList) add(name string, offset uint16, addr uint16) {
+func (c *codeList) add(name string, addr uint16) {
+	slice := *c.lst
+	
+	offset := c.startoffset
+	if len(slice) >= 1 {
+		prev := slice[len(slice)-1]
+		offset = prev.offset + uint16(len(prev.val))
+	}	
 	var twobyte [CELLL]byte
 	val := []byte{}
 	val = append(val, twobyte[0:]...)
 	binary.LittleEndian.PutUint16(val, addr)
 	res := codeitem{val, offset, name, -1}
-	*c = append(*c, res)
+	*c.lst = append(*c.lst, res)
 }
 
-func (c *codeList) addLabel(name string, offset uint16, li int) {
-	c.add(name, offset, 0)
-	slice := *c
+func (c *codeList) println() {
+	slice := *c.lst
+	for _, k := range slice {
+		fmt.Printf("%x: ", k.offset)
+		s := k.name
+		if k.name == "STRING" {
+			l := k.val[0]
+			s = string(k.val[1:])[:l]
+			s = fmt.Sprintf("%x%s", l, "'" + s + "'")
+		}
+		fmt.Printf("%s", s)
+		if k.li != -1 {
+			fmt.Printf(" [%x]", slice[k.li].offset)
+		}
+		fmt.Println()
+	}
+}
+
+func (c *codeList) intoForth(f *Forth) {
+	slice := *c.lst
+	for _, v := range slice {
+		vlst := v.val
+		for i, b := range vlst {
+			f.Memory[v.offset+uint16(i)] = b
+		}
+	}
+}
+
+func (c *codeList) size() uint16 {
+	slice := *c.lst
+	last := slice[len(slice)-1]
+	j := uint16(len(last.val)) + last.offset
+	return j - c.startoffset 
+}	
+
+func (c *codeList) addLabel(name string, li int) {
+	c.add(name, 0)
+	slice := *c.lst
 	slice[len(slice)-1].li = li
 }
 
 
-func (c *codeList) addString(offset uint16, s string) {
-	c.add("STR", offset, 0)
-	slice := *c
+func (c *codeList) addString(s string) {
+	s = s[1:len(s)-1]
+	c.add("STRING", 0)
+	slice := *c.lst
 	res := []byte{}
 	res = append(res, byte(len(s)))
 	res = append(res, []byte(s)...)
+	if len(res) % CELLL == (CELLL / 2) {
+		res = append(res, byte(0))
+	}
 	slice[len(slice)-1].val = res
+}
+
+
+// gives labelled items the right addresses
+// which we don't do till the codelist is complete
+func (c *codeList) fixLabels() {
+	slice := *c.lst
+	for _, val := range slice {
+		if val.li != -1 {
+			off := slice[val.li].offset
+			binary.LittleEndian.PutUint16(val.val, off)
+		}
+	}
+	
 }
 
 func (f *Forth) compileWords(name string, words []string, labels map[string]uint16) (err error) {
 	err = nil
-	//fmt.Println("compileWords:", name, words)
 	startaddr := CODEE + (CELLL * f.prims)
-	var codelist codeList
-	setit := func(name string, i uint16, addr uint16) {
-		targ := startaddr + i*CELLL
-		f.SetWordPtr(targ, addr)
-		fmt.Printf("%x: ", targ)
-		codelist.add(name, targ, addr)
-	}
+	codelist := codeList{&[]codeitem{}, startaddr}
 	possible := []struct {
 		mtype  string
-		method func(w string, i uint16) error
+		method func(w string) error
 	}{
-		{"PRIM", func(w string, i uint16) error {
+		{"PRIM", func(w string) error {
 			if addr, e := f.Addr(w); e == nil {
-				setit(w, i, addr)
-				fmt.Println(w)
+				codelist.add(w, addr)
 				return nil
 			} else {
 				return e
 			}
 		}},
-		{"NUM", func(w string, i uint16) error {
+		{"NUM", func(w string) error {
 			if addr, e := strconv.ParseInt(w, 0, 0); e == nil {
-				setit(w, i, uint16(addr))
-				fmt.Println(w)
+				codelist.add(w, uint16(addr))
 				return nil
 			} else {
 				return e
 			}
 		}},
-		{"LABEL", func(w string, i uint16) error {
+		{"LABEL", func(w string) error {
 			res := errors.New(fmt.Sprintf("No label for %s", w))
 			if addr, ok := labels[w]; ok {
-				//fmt.Printf("label address is %x\n", addr+startaddr)
-				targ := addr + startaddr
-				setit(w, i, targ)
-				codelist.addLabel(w, i, int(addr))
-				fmt.Printf("[%x] %s\n", targ, w)
+				codelist.addLabel(w, int(addr))
 				return nil
 			}
 			return res
 		}},
-		{"ASM", func(w string, i uint16) error {
+		{"ASM", func(w string) error {
 			res := errors.New(fmt.Sprintf("ERROR: No word corresponds to %s", w))
 			if name, ok := asm2forth[w]; ok {
 				if addr, e := f.Addr(name); e == nil {
-					setit(w, i, addr)
-					fmt.Println(w)
+					codelist.add(w, addr)
 					return e
 				} else {
 					return e
@@ -102,60 +151,49 @@ func (f *Forth) compileWords(name string, words []string, labels map[string]uint
 			}
 			return res
 		}},
-		{"CHR", func(w string, i uint16) error {
+		{"CHR", func(w string) error {
 			res := errors.New(fmt.Sprintf("could not find character in %s", w))
 			if strings.HasPrefix(w, "'") && strings.HasSuffix(w, "'") && len(w) == 3 {
-				setit(w, i, uint16(byte(w[1])))
-				fmt.Println(w)
+				codelist.add(w, uint16(byte(w[1])))
+				return nil
+			}
+			return res
+		}},
+		{"STRING", func(w string) error {
+			res := errors.New(fmt.Sprintf("could not find string in %s", w))
+			if strings.HasPrefix(w, "'") && strings.HasSuffix(w, "'") && len(w) > 3 {
+				codelist.addString(w)
 				return nil
 			}
 			return res
 		}},
 	}
-	parseWord := func(word string, i uint16) (n uint16, err error) {
-		n = 0
+	parseWord := func(word string) (err error) {
 		for _, j := range possible {
-			if err := j.method(word, i); err == nil {
-				//fmt.Println(word, j.mtype)
-				// for inline strings
-				if j.mtype == "CHR" && len(word) > 3 {
-					//fmt.Println("we've got an inline string")
-					word = word[1 : len(word)-1]
-					l := len(word)
-					targ := startaddr + i*CELLL
-					f.Memory[targ] = byte(l)
-					//fmt.Println("length is", l)
-					//fmt.Println("word is", word)
-					codelist.addString(startaddr+i*CELLL, word)
-					for k := 0; k < l; k++ {
-						f.Memory[startaddr+i*CELLL+1+uint16(k)] = word[k]
-					}
-					l += 1
-					n = uint16((l + 1) / CELLL)
-					return n, nil
-				} else {
-					return 1, nil
-				}
+			if err := j.method(word); err == nil {
+				return nil
 			}
 		}
-		return n, errors.New(fmt.Sprintf("no way to parse %s", word))
+		return errors.New(fmt.Sprintf("no way to parse %s", word))
 	}
 	var nprims uint16
 	nprims = 0
 	fmt.Printf("\n%x: %s\n", startaddr, name)
 	for _, word := range words {
-		if n, err := parseWord(word, nprims); err != nil {
+		if err := parseWord(word); err != nil {
 			fmt.Printf("Could not add %s, defined as %v, because %v\n", name, words, err)
 			return err
-		} else {
-			nprims += n
-		}
+		} 
 	}
-	fmt.Println("codelist is", codelist)
+	codelist.fixLabels()
+	codelist.intoForth(f)
+	codelist.println()
+	nprims = codelist.size() / CELLL	
+	if codelist.size() % CELLL == 1 {
+		fmt.Println("BUGBUG ***** odd length for colon def", codelist.size(), codelist.lst)
+	}
 	f.NewWord(name, startaddr)
 	f.prims = f.prims + nprims
-	//fmt.Printf("%s %x %v\n", name, startaddr, words)
-	//fmt.Println(dumpmem(f, startaddr, CELLL*nprims))
 	return err
 }
 
@@ -306,7 +344,7 @@ func (f *Forth) WordFromASM(asm string) (err error) {
 			case strings.HasSuffix(tok, ":") && tok == fields[0]:
 				label := tok
 				label = label[:len(label)-1]
-				labels[label] = CELLL * uint16(len(words))
+				labels[label] = uint16(len(words))
 			case tok == "DW":
 				words = append(words, toks...)
 				break tokenloop

@@ -108,6 +108,9 @@ func (f *Forth) Q_RX() {
 		f.Push(0)
 	} else {
 		//fmt.Println("RX:", b, string(b))
+		if b == 10 {
+			b = 13
+		}
 		f.Push(uint16(b))
 		f.Push(asuint16(-1))
 	}
