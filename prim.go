@@ -9,42 +9,43 @@ func (f *Forth) AddPrimitives() {
 	words := []struct {
 		word string
 		m    fn
+		flags int
 	}{
-		{"BYE", f.BYE},
-		{"CALL", f.Call},
-		{"doLIST", f.doLIST},
-		{"!IO", f.B_IO},
-		{"?RX", f.Q_RX},
-		{"TX!", f.B_TX},
-		{"EXECUTE", f.Execute},
-		{"doLIT", f.doLIT},
-		{"EXIT", f.EXIT},
-		{"next", f.Next},
-		{"?branch", f.Q_branch},
-		{"branch", f.Branch},
-		{"!", f.Bang},
-		{"@", f.At},
-		{"C!", f.Cbang},
-		{"C@", f.Cat},
-		{"RP@", f.RPat},
-		{"RP!", f.RPbang},
-		{"R>", f.Rfrom},
-		{"R@", f.Rat},
-		{">R", f.Tor},
-		{"DROP", f.Drop},
-		{"DUP", f.Dup},
-		{"SWAP", f.Swap},
-		{"OVER", f.Over},
-		{"SP@", f.Sp_at},
-		{"SP!", f.Sp_bang},
-		{"0<", f.Zless},
-		{"AND", f.And},
-		{"OR", f.Or},
-		{"XOR", f.Xor},
-		{"UM+", f.UMplus},
+		{"BYE", f.BYE, 0},
+		{"CALL", f.Call, 0},
+		{"doLIST", f.doLIST, COMPO},
+		{"!IO", f.B_IO, 0},
+		{"?RX", f.Q_RX, 0},
+		{"TX!", f.B_TX, 0},
+		{"EXECUTE", f.Execute, 0},
+		{"doLIT", f.doLIT, COMPO},
+		{"EXIT", f.EXIT, 0},
+		{"next", f.Next, COMPO},
+		{"?branch", f.Q_branch, COMPO},
+		{"branch", f.Branch, COMPO},
+		{"!", f.Bang, 0},
+		{"@", f.At, 0},
+		{"C!", f.Cbang, 0},
+		{"C@", f.Cat, 0},
+		{"RP@", f.RPat, 0},
+		{"RP!", f.RPbang, COMPO},
+		{"R>", f.Rfrom, 0},
+		{"R@", f.Rat, 0},
+		{">R", f.Tor, COMPO},
+		{"DROP", f.Drop, 0},
+		{"DUP", f.Dup, 0},
+		{"SWAP", f.Swap, 0},
+		{"OVER", f.Over, 0},
+		{"SP@", f.Sp_at, 0},
+		{"SP!", f.Sp_bang, 0},
+		{"0<", f.Zless, 0},
+		{"AND", f.And, 0},
+		{"OR", f.Or, 0},
+		{"XOR", f.Xor, 0},
+		{"UM+", f.UMplus, 0},
 	}
 	for _, v := range words {
-		f.AddPrim(v.word, v.m)
+		f.AddPrim(v.word, v.m, v.flags)
 	}
 }
 
@@ -107,10 +108,10 @@ func (f *Forth) Q_RX() {
 		//fmt.Println("could not read Byte", err)
 		f.Push(0)
 	} else {
-		//fmt.Println("RX:", b, string(b))
 		if b == 10 {
 			b = 13
 		}
+		fmt.Println("RX:", b, string(b))
 		f.Push(uint16(b))
 		f.Push(asuint16(-1))
 	}

@@ -91,7 +91,7 @@ func TestFields(t *testing.T) {
 func TestAddPrim(t *testing.T) {
 	f := New(nil, nil)
 	a := func() {}
-	f.AddPrim("BYE", a)
+	f.AddPrim("BYE", a, 0)
 	code := f.WordPtr(CODEE) // first word in code dictionary
 	if code != 1 {
 		t.Fatal("ought to have a code word there")
@@ -101,7 +101,7 @@ func TestAddPrim(t *testing.T) {
 func TestAddPrimCall(t *testing.T) {
 	f := New(nil, nil)
 	called := false
-	f.AddPrim("BYE", func() { called = true })
+	f.AddPrim("BYE", func() { called = true }, 0)
 	f.CallFn("BYE")
 	if called != true {
 		t.Fatal("didn't call the function")
@@ -111,8 +111,8 @@ func TestAddPrimCall(t *testing.T) {
 func TestMorePrim(t *testing.T) {
 	f := New(nil, nil)
 	f.prims = 0
-	f.AddPrim("BYE", func() {})
-	f.AddPrim("JK", func() {})
+	f.AddPrim("BYE", func() {}, 0)
+	f.AddPrim("JK", func() {}, 0)
 	a, _ := f.Addr("JK")
 	if a != CODEE+2 {
 		t.Fatal("didn't add new code in memory")
@@ -126,8 +126,8 @@ func TestMorePrim(t *testing.T) {
 func TestPcode2Prim(t *testing.T) {
 	f := New(nil, nil)
 	f.prims = 0
-	f.AddPrim("BYE", func() {})
-	f.AddPrim("JK", func() {})
+	f.AddPrim("BYE", func() {}, 0)
+	f.AddPrim("JK", func() {}, 0)
 	a := f.Frompcode(2)
 	if a != "JK" {
 		t.Fatal("Looking up pcode 2 we got", a, "but should have got JK")
@@ -139,7 +139,7 @@ func TestAddPrimCall2(t *testing.T) {
 	f := New(nil, nil)
 	f.IP = 0
 	o := f.IP
-	f.AddPrim("NEXT", f._next)
+	f.AddPrim("NEXT", f._next, 0)
 	f.CallFn("NEXT")
 	o2 := f.IP
 	if o2 <= o {
@@ -151,7 +151,7 @@ func TestAddPrimAddr(t *testing.T) {
 	f := New(nil, nil)
 	f.prims = 0
 	a := func() {}
-	f.AddPrim("BYE", a)
+	f.AddPrim("BYE", a, 0)
 	aa, _ := f.Addr("BYE")
 	if aa != CODEE {
 		t.Fatal("address of BYE ought to be", CODEE, "and not ", aa)
@@ -278,7 +278,7 @@ func TestOldMain(t *testing.T) {
 		fmt.Println("hello from the BYE primitive")
 		called = true
 		f.BYE()
-	})
+	}, 0)
 	f.AddWord(": nop ;")
 	f.AddWord(": C BYE ;")
 	f.AddWord(": B C ;")
@@ -331,7 +331,7 @@ func RunWord(word string, f *Forth, t *testing.T) {
 		fmt.Println("hello from the BYE primitive")
 		called = true
 		f.BYE()
-	})
+	}, 0)
 	UZERO, _ := f.Addr("UZERO")
 	b, _ := f.Addr("ULAST-UZERO")
 	UPP, _ := f.Addr("UPP")
@@ -473,7 +473,7 @@ func TestBeginUntil10(t *testing.T) {
 	f.AddPrim("CALLME", func() {
 		called += 1
 		f._next()
-	})
+	}, 0)
 	word := ": teniter doLIT 10 BEGIN CALLME doLIT -1 + DUP doLIT 0 = UNTIL doLIT 2 ;"
 	f.AddWord(word)
 	RunWord("teniter", f, t)
@@ -488,7 +488,7 @@ func TestBeginWhileRepeat(t *testing.T) {
 	f.AddPrim("CALLME", func() {
 		called += 1
 		f._next()
-	})
+	}, 0)
 	word := ": iter doLIT 6 BEGIN doLIT -1 + DUP WHILE CALLME REPEAT doLIT 30 ;"
 	f.AddWord(word)
 	RunWord("iter", f, t)

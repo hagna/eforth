@@ -43,9 +43,9 @@ func (c *codeList) println() {
 	for _, k := range slice {
 		fmt.Printf("%x: ", k.offset)
 		s := k.name
-		if k.name == "STR" {
+		if k.name == "STRING" {
 			l := k.val[0]
-			s = string(k.val[1:])
+			s = string(k.val[1:])[:l]
 			s = fmt.Sprintf("%x%s", l, "'"+s+"'")
 		}
 		fmt.Printf("%s", s)
@@ -81,7 +81,7 @@ func (c *codeList) addLabel(name string, li int) {
 
 func (c *codeList) addString(s string) {
 	s = s[1 : len(s)-1]
-	c.add("STR", 0)
+	c.add("STRING", 0)
 	slice := *c.lst
 	res := []byte{}
 	res = append(res, byte(len(s)))
@@ -107,7 +107,6 @@ func (c *codeList) fixLabels() {
 
 func (f *Forth) compileWords(name string, words []string, labels map[string]uint16, bitmask int) (err error) {
 	err = nil
-	fmt.Println("compileWords:", name, words, labels, bitmask)
 	startaddr := CODEE + (CELLL * f.prims)
 	codelist := codeList{&[]codeitem{}, startaddr}
 	possible := []struct {
@@ -158,7 +157,7 @@ func (f *Forth) compileWords(name string, words []string, labels map[string]uint
 			}
 			return res
 		}},
-		{"STR", func(w string) error {
+		{"STRING", func(w string) error {
 			res := errors.New(fmt.Sprintf("could not find string in %s", w))
 			if strings.HasPrefix(w, "'") && strings.HasSuffix(w, "'") && len(w) > 3 {
 				codelist.addString(w)
@@ -1844,8 +1843,9 @@ SCOM3:		DW	THROW			;error
 ;		Assemble a call instruction to ca.
 
 		$COLON	5,'call,',CALLC
-		DW	DOLIT,CALLL,COMMA,HERE	;Direct Threaded Code
-		DW	CELLP,SUBB,COMMA,EXIT	;DTC 8086 relative call
+		DW	DOLIT,CALLL,COMMA 	;Direct Threaded Code
+		DW	COMMA,EXIT
+; nh modified this for the golang vm
 
 ;   :		( -- ; <string> )
 ;		Start a new colon definition using next word as its name.

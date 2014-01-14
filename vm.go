@@ -210,7 +210,7 @@ func New(r io.Reader, w io.Writer) *Forth {
 }
 
 func (f *Forth) AddName(word string, addr uint16, bitmask int) {
-	fmt.Println("AddName(", word, ", ", addr, bitmask, ")")
+	fmt.Printf("AddName(%v, %x, %x\n", word, addr, bitmask)
 	_len := uint16(len(word) / CELLL)  // rounded down cell count
 	f.NP = f.NP - ((_len + 3) * CELLL) // new header on cell boundary
 	i := f.NP
@@ -220,8 +220,6 @@ func (f *Forth) AddName(word string, addr uint16, bitmask int) {
 	l := byte(len(word))
 	if bitmask != 0 {
 		l = byte(bitmask) | l
-		fmt.Println("new len is ", l)
-		fmt.Println("bitmask is", bitmask)
 	}
 	f.Memory[f.LAST] = l
 	for j, c := range word {
@@ -230,7 +228,7 @@ func (f *Forth) AddName(word string, addr uint16, bitmask int) {
 
 }
 
-func (f *Forth) AddPrim(word string, m fn) {
+func (f *Forth) AddPrim(word string, m fn, flags int) {
 	f.prims = f.prims + 1
 	addr := CODEE + (2 * (f.prims - 1))
 	f.prim2addr[word] = addr
@@ -238,7 +236,7 @@ func (f *Forth) AddPrim(word string, m fn) {
 	f.pcode2word[f.prims] = word
 	//fmt.Printf("%x is \"%s\"\n", f.prims, word)
 	f.SetWordPtr(addr, f.prims)
-	f.AddName(word, addr, 0)
+	f.NewWord(word, addr, flags)
 }
 
 func (f *Forth) RemoveComments(a string) (b string) {
@@ -368,33 +366,25 @@ func (f *Forth) Main() {
 	fmt.Println("---------Main----------")
 	var pcode uint16
 	var word string
-	callstack := []string{}
-	watchme := ":"
-	watch := false
+	debug := false
 inf:
 	for {
+
+		if debug {
+			fmt.Printf("&WP %x WP %x IP %x", f.aWP, f.WP, f.IP)
+		}
 		// simulate JMP to f.WP
 		pcode = f.WordPtr(f.WP)
 		word = f.Frompcode(pcode)
-		calling, _ := f.addr2word[f.WP]
-		if calling == watchme {
-			watch = true
-		}
-		if watch {
+		if debug {
 			calling, ok := f.addr2word[f.WP]
+			s := word
 			if ok {
-				fmt.Printf("&WP %x %s IP %x\n", f.aWP, calling, f.IP)
-			} else {
-				fmt.Printf("&WP %x [IP] %x IP %x\n", f.aWP, f.WordPtr(f.IP), f.IP)
+				s = "::" + calling
 			}
-			calling, ok = f.addr2word[f.WP]
-			if ok {
-				callstack = append(callstack, "\n"+calling+"-->")
-			} else {
-				callstack = append(callstack, word)
-			}
-			fmt.Println(word)
-			fmt.Printf("pcode %x word %s arg %x\n", pcode, word, f.WordPtr(f.IP))
+			fmt.Println("", s)
+			f.showstacks()
+			//fmt.Println(dumpmem(f, f.LAST-10, 20))
 		}
 		err := f.CallFn(word)
 		if f.SP > SPP {
@@ -404,9 +394,6 @@ inf:
 		if f.RP > RPP {
 			fmt.Println("Main: return stack underflow")
 			break inf
-		}
-		if watch {
-			f.showstacks()
 		}
 		if err != nil {
 			fmt.Println(err)
