@@ -176,7 +176,6 @@ func (f *Forth) compileWords(name string, words []string, labels map[string]uint
 	}
 	var nprims uint16
 	nprims = 0
-	fmt.Printf("\n%x: %s\n", startaddr, name)
 	for _, word := range words {
 		if err := parseWord(word); err != nil {
 			fmt.Printf("Could not add %s, defined as %v, because %v\n", name, words, err)
@@ -185,7 +184,7 @@ func (f *Forth) compileWords(name string, words []string, labels map[string]uint
 	}
 	codelist.fixLabels()
 	codelist.intoForth(f)
-	codelist.println()
+	//codelist.println()
 	nprims = codelist.size() / CELLL
 	if codelist.size()%CELLL == 1 {
 		fmt.Println("BUGBUG ***** odd length for colon def", codelist.size(), codelist.lst)
@@ -340,10 +339,10 @@ func (f *Forth) WordFromASM(asm string) (err error) {
 				vname := fields[3]
 				asm2forth[vname] = name
 				words = append(words, []string{"CALLL", "doLIST", "doUSER", strconv.Itoa(int(f._USER))}...)
-				fmt.Println("user variable", name, " offset is", f._USER)
+//				fmt.Println("user variable", name, " offset is", f._USER)
 				f._USER += CELLL
 				if m, ok := f.macros[name]; ok {
-					fmt.Println("running macro", m, "for word", name)
+//					fmt.Println("running macro", m, "for word", name)
 					m()
 				}
 				break tokenloop

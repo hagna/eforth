@@ -141,6 +141,7 @@ type Forth struct {
 	Output io.Writer
 
 	b_input  *bufio.Reader
+	rxchan   chan uint16
 	b_output *bufio.Writer
 
 	Memory [EM]byte
@@ -210,7 +211,7 @@ func New(r io.Reader, w io.Writer) *Forth {
 }
 
 func (f *Forth) AddName(word string, addr uint16, bitmask int) {
-	fmt.Printf("AddName(%v, %x, %x\n", word, addr, bitmask)
+//	fmt.Printf("AddName(%v, %x, %x\n", word, addr, bitmask)
 	_len := uint16(len(word) / CELLL)  // rounded down cell count
 	f.NP = f.NP - ((_len + 3) * CELLL) // new header on cell boundary
 	i := f.NP
@@ -363,7 +364,6 @@ func (f *Forth) Main() {
 		fmt.Println(e)
 		return
 	}
-	fmt.Println("---------Main----------")
 	var pcode uint16
 	var word string
 	debug := false
@@ -387,14 +387,6 @@ inf:
 			//fmt.Println(dumpmem(f, f.LAST-10, 20))
 		}
 		err := f.CallFn(word)
-		if f.SP > SPP {
-			fmt.Println("Main: stack underflow")
-			break inf
-		}
-		if f.RP > RPP {
-			fmt.Println("Main: return stack underflow")
-			break inf
-		}
 		if err != nil {
 			fmt.Println(err)
 			break inf

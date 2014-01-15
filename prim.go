@@ -3,12 +3,13 @@ package eforth
 import (
 	"bufio"
 	"fmt"
+	"time"
 )
 
 func (f *Forth) AddPrimitives() {
 	words := []struct {
-		word string
-		m    fn
+		word  string
+		m     fn
 		flags int
 	}{
 		{"BYE", f.BYE, 0},
@@ -54,7 +55,6 @@ CODE BYE    ( -- , exit Forth )
       INT   020H                    \ return to DOS
 */
 func (f *Forth) BYE() {
-	fmt.Println("BYE: here am I")
 	f.IP = 0xffff
 }
 
@@ -66,6 +66,25 @@ CODE  !IO   ( -- )                  \ Initialize the serial I/O devices.
 func (f *Forth) B_IO() {
 	f.b_input = bufio.NewReader(f.Input)
 	f.b_output = bufio.NewWriter(f.Output)
+	in := f.b_input
+	c := make(chan uint16)
+	go func() {
+		for {
+			b, err := in.ReadByte()
+			if err != nil {
+				//            fmt.Println("could not read Byte", err)
+				c <- 0
+			} else {
+				if b == 10 {
+					b = 13
+				}
+				//            fmt.Println("\nRX:", b, string(b))
+				c <- uint16(b)
+				c <- asuint16(-1)
+			}
+		}
+	}()
+	f.rxchan = c
 	f._next()
 }
 
@@ -102,18 +121,21 @@ QRX3: PUSH  BX
 // RX may need to be non-blocking receive
 // returns either false or char true
 func (f *Forth) Q_RX() {
-	in := f.b_input
-	b, err := in.ReadByte()
-	if err != nil {
-		//fmt.Println("could not read Byte", err)
-		f.Push(0)
-	} else {
-		if b == 10 {
-			b = 13
+	c := f.rxchan
+	select {
+	case res := <-c:
+		if res == 0 {
+			f.Push(0)
+		} else {
+			f.Push(res)
+			f.Push(<-c)
 		}
-		fmt.Println("RX:", b, string(b))
-		f.Push(uint16(b))
-		f.Push(asuint16(-1))
+	// I really don't like this solution that much
+	// but at least this is a solution.
+	// evidently unix likes the philosophy of blocking io too
+	default:
+		time.Sleep(1 * time.Millisecond)
+		f.Push(0)
 	}
 	f._next()
 }
@@ -133,7 +155,7 @@ func (f *Forth) B_TX() {
 	out := f.b_output
 	c := f.Pop()
 	fmt.Fprintf(out, "%c", rune(c))
-	//	fmt.Println("output:", c, fmt.Sprintf("%c", rune(c)))
+	//fmt.Println("\nTX:", c, fmt.Sprintf("%c", rune(c)))
 	err := out.Flush()
 	if err != nil {
 		fmt.Println(err)
