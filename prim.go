@@ -1,8 +1,8 @@
 package eforth
 
 import (
-	"bufio"
 	"fmt"
+	"io"
 	"time"
 )
 
@@ -64,25 +64,37 @@ CODE  !IO   ( -- )                  \ Initialize the serial I/O devices.
 */
 // initialize IO
 func (f *Forth) B_IO() {
-	f.b_input = bufio.NewReader(f.Input)
-	f.b_output = bufio.NewWriter(f.Output)
-	in := f.b_input
+	//in := f.b_input
 	c := make(chan uint16)
 	go func() {
+		buf := make([]byte, 1)
+	forloop:
 		for {
-			b, err := in.ReadByte()
-			if err != nil {
-				//            fmt.Println("could not read Byte", err)
-				c <- 0
-			} else {
-				if b == 10 {
-					b = 13
+			if f.Input != nil {
+				_, err := f.Input.Read(buf)
+				//b, err := in.ReadByte()
+				if err != nil {
+					//            fmt.Println("could not read Byte", err)
+					c <- 0
+					if err == io.EOF {
+						fmt.Println("break for io.EOF")
+						break forloop
+					}
+				} else {
+					b := buf[0]
+					if b == 10 {
+						b = 13
+					}
+					//            fmt.Println("\nRX:", b, string(b))
+					c <- uint16(b)
+					c <- asuint16(-1)
 				}
-				//            fmt.Println("\nRX:", b, string(b))
-				c <- uint16(b)
-				c <- asuint16(-1)
+			} else {
+				c <- 0
 			}
+
 		}
+		fmt.Println("exiting goroutine")
 	}()
 	f.rxchan = c
 	f._next()
@@ -152,14 +164,14 @@ TX1:  MOV   AH,6                    \ MS-DOS Direct Console I/O
 */
 // ( c -- ) send the character on the data stack
 func (f *Forth) B_TX() {
-	out := f.b_output
+	out := f.Output
 	c := f.Pop()
 	fmt.Fprintf(out, "%c", rune(c))
 	//fmt.Println("\nTX:", c, fmt.Sprintf("%c", rune(c)))
-	err := out.Flush()
+	/*err := out.Flush()
 	if err != nil {
 		fmt.Println(err)
-	}
+	}*/
 	f._next()
 }
 

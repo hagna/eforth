@@ -3,7 +3,6 @@ package eforth
 // following tutorial at http://www.offete.com/files/zeneForth.htm
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/binary"
 	"errors"
@@ -140,9 +139,7 @@ type Forth struct {
 	Input  io.Reader
 	Output io.Writer
 
-	b_input  *bufio.Reader
-	rxchan   chan uint16
-	b_output *bufio.Writer
+	rxchan chan uint16
 
 	Memory [EM]byte
 
@@ -204,14 +201,15 @@ func New(r io.Reader, w io.Writer) *Forth {
 		LAST:       0,
 		_USER:      4 * CELLL,
 		Input:      r,
-		Output:     w}
+		Output:     w,
+	}
 	f.AddPrimitives()
 	f.AddHiforth()
 	return f
 }
 
 func (f *Forth) AddName(word string, addr uint16, bitmask int) {
-//	fmt.Printf("AddName(%v, %x, %x\n", word, addr, bitmask)
+	//	fmt.Printf("AddName(%v, %x, %x\n", word, addr, bitmask)
 	_len := uint16(len(word) / CELLL)  // rounded down cell count
 	f.NP = f.NP - ((_len + 3) * CELLL) // new header on cell boundary
 	i := f.NP

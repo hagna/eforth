@@ -339,10 +339,10 @@ func (f *Forth) WordFromASM(asm string) (err error) {
 				vname := fields[3]
 				asm2forth[vname] = name
 				words = append(words, []string{"CALLL", "doLIST", "doUSER", strconv.Itoa(int(f._USER))}...)
-//				fmt.Println("user variable", name, " offset is", f._USER)
+				//				fmt.Println("user variable", name, " offset is", f._USER)
 				f._USER += CELLL
 				if m, ok := f.macros[name]; ok {
-//					fmt.Println("running macro", m, "for word", name)
+					//					fmt.Println("running macro", m, "for word", name)
 					m()
 				}
 				break tokenloop
@@ -2027,7 +2027,7 @@ WORS2:		DW	EXIT
 
 		$COLON	2,'hi',HI
 		DW	STOIO,CR		;initialize I/O
-		D$	DOTQP,'eForth '	;model
+		D$	DOTQP,'eForth v'	;model
 		DW	BASE,AT,HEX		;save radix
 		DW	VERSN,BDIGS,DIG,DIG
 		DW	DOLIT,'.',HOLD
