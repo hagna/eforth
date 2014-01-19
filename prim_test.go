@@ -12,7 +12,7 @@ func TestDoLIST(t *testing.T) {
 	f.IP = 99
 	binary.LittleEndian.PutUint16(f.Memory[23:], 0xdead)
 	f.Push(23) // this is the return address
-	f.doLIST()
+	f._doLIST()
 	b := binary.LittleEndian.Uint16(f.Memory[f.RP:])
 	if b != 99 {
 		t.Fatal("b should be 99 and not", b)
@@ -22,8 +22,8 @@ func TestDoLIST(t *testing.T) {
 func TestRx(t *testing.T) {
 	f := New(nil, nil)
 	f.Input = strings.NewReader("t")
-	f.B_IO()
-	f.Q_RX()
+	f._B_IO()
+	f._Q_RX()
 	tf := f.Pop()
 	c := f.Pop()
 	if c != 't' {
@@ -37,8 +37,8 @@ func TestRx(t *testing.T) {
 func TestRx2(t *testing.T) {
 	f := New(nil, nil)
 	f.Input = strings.NewReader("")
-	f.B_IO()
-	f.Q_RX()
+	f._B_IO()
+	f._Q_RX()
 	tf := f.Pop()
 	c := f.Pop()
 	if c != 0 {
@@ -51,7 +51,7 @@ func TestRx2(t *testing.T) {
 
 func TestDoLit(t *testing.T) {
 	f := New(nil, nil)
-	f.B_IO()
+	f._B_IO()
 	f.IP = 30
 	binary.LittleEndian.PutUint16(f.Memory[f.IP:], 0xdead)
 	f.doLIT()
@@ -68,9 +68,9 @@ func TestTx(t *testing.T) {
 	f := New(nil, nil)
 	s := new(bytes.Buffer)
 	f.Output = s
-	f.B_IO()
+	f._B_IO()
 	f.Push(99)
-	f.B_TX()
+	f._B_TX()
 	val := s.String()
 	if val != "c" {
 		t.Fatal("val should be c and not", val)

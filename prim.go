@@ -12,38 +12,38 @@ func (f *Forth) AddPrimitives() {
 		m     fn
 		flags int
 	}{
-		{"BYE", f.BYE, 0},
-		{"CALL", f.Call, 0},
-		{"doLIST", f.doLIST, COMPO},
-		{"!IO", f.B_IO, 0},
-		{"?RX", f.Q_RX, 0},
-		{"TX!", f.B_TX, 0},
-		{"EXECUTE", f.Execute, 0},
+		{"_BYE", f._BYE, 0},
+		{"CALL", f._Call, 0},
+		{"_doLIST", f._doLIST, COMPO},
+		{"!IO", f._B_IO, 0},
+		{"?RX", f._Q_RX, 0},
+		{"TX!", f._B_TX, 0},
+		{"EXECUTE", f._Execute, 0},
 		{"doLIT", f.doLIT, COMPO},
-		{"EXIT", f.EXIT, 0},
-		{"next", f.Next, COMPO},
-		{"?branch", f.Q_branch, COMPO},
-		{"branch", f.Branch, COMPO},
-		{"!", f.Bang, 0},
-		{"@", f.At, 0},
-		{"C!", f.Cbang, 0},
-		{"C@", f.Cat, 0},
-		{"RP@", f.RPat, 0},
-		{"RP!", f.RPbang, COMPO},
-		{"R>", f.Rfrom, 0},
-		{"R@", f.Rat, 0},
-		{">R", f.Tor, COMPO},
-		{"DROP", f.Drop, 0},
-		{"DUP", f.Dup, 0},
-		{"SWAP", f.Swap, 0},
-		{"OVER", f.Over, 0},
-		{"SP@", f.Sp_at, 0},
-		{"SP!", f.Sp_bang, 0},
-		{"0<", f.Zless, 0},
-		{"AND", f.And, 0},
-		{"OR", f.Or, 0},
-		{"XOR", f.Xor, 0},
-		{"UM+", f.UMplus, 0},
+		{"_EXIT", f._EXIT, 0},
+		{"next", f._Next, COMPO},
+		{"?branch", f._Q_branch, COMPO},
+		{"branch", f._Branch, COMPO},
+		{"!", f._Bang, 0},
+		{"@", f._At, 0},
+		{"C!", f._Cbang, 0},
+		{"C@", f._Cat, 0},
+		{"RP@", f._RPat, 0},
+		{"RP!", f._RPbang, COMPO},
+		{"R>", f._Rfrom, 0},
+		{"R@", f._Rat, 0},
+		{">R", f._Tor, COMPO},
+		{"DROP", f._Drop, 0},
+		{"DUP", f._Dup, 0},
+		{"SWAP", f._Swap, 0},
+		{"OVER", f._Over, 0},
+		{"SP@", f._Sp_at, 0},
+		{"SP!", f._Sp_bang, 0},
+		{"0<", f._Zless, 0},
+		{"AND", f._And, 0},
+		{"OR", f._Or, 0},
+		{"XOR", f._Xor, 0},
+		{"UM+", f._UMplus, 0},
 	}
 	for _, v := range words {
 		f.AddPrim(v.word, v.m, v.flags)
@@ -51,10 +51,10 @@ func (f *Forth) AddPrimitives() {
 }
 
 /*
-CODE BYE    ( -- , exit Forth )
+CODE _BYE    ( -- , exit Forth )
       INT   020H                    \ return to DOS
 */
-func (f *Forth) BYE() {
+func (f *Forth) _BYE() {
 	f.IP = 0xffff
 }
 
@@ -63,7 +63,7 @@ CODE  !IO   ( -- )                  \ Initialize the serial I/O devices.
       $_next
 */
 // initialize IO
-func (f *Forth) B_IO() {
+func (f *Forth) _B_IO() {
 	//in := f.b_input
 	c := make(chan uint16)
 	go func() {
@@ -101,11 +101,11 @@ func (f *Forth) B_IO() {
 }
 
 /*
-CODE  EXECUTE     ( ca -- )         \ Execute the word at ca.
+CODE  EXECUTE     ( ca -- )         \ _Execute the word at ca.
       POP   BX
       JMP   BX                      \ jump to the code address
 */
-func (f *Forth) Execute() {
+func (f *Forth) _Execute() {
 	bx := f.Pop()
 	f.WP = bx
 }
@@ -132,7 +132,7 @@ QRX3: PUSH  BX
 */
 // RX may need to be non-blocking receive
 // returns either false or char true
-func (f *Forth) Q_RX() {
+func (f *Forth) _Q_RX() {
 	c := f.rxchan
 	select {
 	case res := <-c:
@@ -163,7 +163,7 @@ TX1:  MOV   AH,6                    \ MS-DOS Direct Console I/O
       $_next
 */
 // ( c -- ) send the character on the data stack
-func (f *Forth) B_TX() {
+func (f *Forth) _B_TX() {
 	out := f.Output
 	c := f.Pop()
 	fmt.Fprintf(out, "%c", rune(c))
@@ -191,21 +191,21 @@ func (f *Forth) doLIT() {
 }
 
 /*
-doLIST is the converse of EXIT.  It pushes the return stack
+_doLIST is the converse of _EXIT.  It pushes the return stack
 address onto the data stack.
 
-It's called with CALL doLIST and CALL is a 8086 hack to get
-the address of the first word following doLIST on the stack:
+It's called with CALL _doLIST and CALL is a 8086 hack to get
+the address of the first word following _doLIST on the stack:
 the 8086 thinks that is the next instruction.  What a hack?
 
-doLIST      ( a -- )                \ Run address list in a colon word.
+_doLIST      ( a -- )                \ Run address list in a colon word.
       XCHG  BP,SP                   \ exchange pointers
       PUSH  SI                      \ push return stack
       XCHG  BP,SP                   \ restore the pointers
       POP   SI                      \ new list address
       $_next
 */
-func (f *Forth) doLIST() {
+func (f *Forth) _doLIST() {
 	XCHG(&f.RP, &f.SP)
 	f.Push(f.IP)
 	XCHG(&f.RP, &f.SP)
@@ -214,25 +214,25 @@ func (f *Forth) doLIST() {
 }
 
 /*
-   Call puts the addresss of the first word after doLIST on the stack
+   _Call puts the addresss of the first word after _doLIST on the stack
    and then then calls the primitive code for the word following itself
 
    CALL ADDR  ; for example
 */
-func (f *Forth) Call() {
+func (f *Forth) _Call() {
 	f.Push(f.WP + 4)
-	f.WP = f.WordPtr(f.WP + 2) // move WP over two and down one to the address of doLIST
+	f.WP = f.WordPtr(f.WP + 2) // move WP over two and down one to the address of _doLIST
 }
 
-// the converse of doLIST. Ends the colon definition.
+// the converse of _doLIST. Ends the colon definition.
 /*
-CODE  EXIT                          \ Terminate a colon definition.
+CODE  _EXIT                          \ Terminate a colon definition.
       XCHG  BP,SP                   \ exchange pointers
       POP   SI                      \ pop return stack
       XCHG  BP,SP                   \ restore the pointers
       $_next
 */
-func (f *Forth) EXIT() {
+func (f *Forth) _EXIT() {
 	XCHG(&f.RP, &f.SP)
 	f.IP = f.Pop()
 	XCHG(&f.RP, &f.SP)
@@ -250,11 +250,11 @@ _next1:ADD   BP,2                    \ yes, pop the index
       ADD   SI,2                    \ exit loop
       $_next
 */
-func (f *Forth) Next() {
+func (f *Forth) _Next() {
 	v := asint16(f.WordPtr(f.RP))
 	v = v - 1
 	f.SetWordPtr(f.RP, asuint16(v))
-	//fmt.Printf("prim: Next() *f.RP is %x\n", f.WordPtr(f.RP))
+	//fmt.Printf("prim: _Next() *f.RP is %x\n", f.WordPtr(f.RP))
 	if v >= 0 {
 		f.IP = f.WordPtr(f.IP)
 		//fmt.Printf("%x >= 0 so IP = *IP = %x\n", v, f.IP)
@@ -268,7 +268,7 @@ func (f *Forth) Next() {
 }
 
 /*
-CODE  ?branch     ( f -- )          \ Branch if flag is zero.
+CODE  ?branch     ( f -- )          \ _Branch if flag is zero.
       POP   BX                      \ pop flag
       OR    BX,BX                   \ ?flag=0
       JZ    BRAN1                   \ yes, so branch
@@ -277,7 +277,7 @@ CODE  ?branch     ( f -- )          \ Branch if flag is zero.
 BRAN1:MOV   SI,0[SI]                \ IP:=(IP), jump to new address
       $_next
 */
-func (f *Forth) Q_branch() {
+func (f *Forth) _Q_branch() {
 	bx := f.Pop()
 	if bx == 0 {
 		f.IP = f.WordPtr(f.IP)
@@ -288,11 +288,11 @@ func (f *Forth) Q_branch() {
 }
 
 /*
-CODE  branch      ( -- )            \ Branch to an inline address.
+CODE  branch      ( -- )            \ _Branch to an inline address.
       MOV   SI,0[SI]                \ jump to new address unconditionally
       $_next
 */
-func (f *Forth) Branch() {
+func (f *Forth) _Branch() {
 	f.IP = f.WordPtr(f.IP)
 	f._next()
 }
@@ -303,7 +303,7 @@ CODE  !     ( w a -- )              \ Pop the data stack to memory.
       POP   0[BX]                   \ store data to that adddress
       $_next
 */
-func (f *Forth) Bang() {
+func (f *Forth) _Bang() {
 	a := f.Pop()
 	v := f.Pop()
 	f.SetWordPtr(a, v)
@@ -316,7 +316,7 @@ CODE  @     ( a -- w )              \ Push memory location to data stack.
       PUSH  0[BX]                   \ fetch data
       $_next
 */
-func (f *Forth) At() {
+func (f *Forth) _At() {
 	bx := f.Pop()
 	v := f.WordPtr(bx)
 	f.Push(v)
@@ -330,7 +330,7 @@ CODE  C!    ( c b -- )              \ Pop data stack to byte memory.
       MOV   0[BX],AL                \ store one byte
       $_next
 */
-func (f *Forth) Cbang() {
+func (f *Forth) _Cbang() {
 	bx := f.Pop()
 	ax := f.Pop()
 	f.SetBytePtr(bx, f.RegLower(ax))
@@ -345,7 +345,7 @@ CODE  C@    ( b -- c )              \ Push byte memory content on data stack.
       PUSH  AX                      \ push on stack
       $_next
 */
-func (f *Forth) Cat() {
+func (f *Forth) _Cat() {
 	bx := f.Pop()
 	ax := f.WordPtr(bx)
 	ax = 0x00ff & ax
@@ -358,7 +358,7 @@ CODE  RP@   ( -- a )                \ Push current RP to data stack.
       PUSH  BP                      \ copy address to return stack
       $_next                         \ pointer register BP
 */
-func (f *Forth) RPat() {
+func (f *Forth) _RPat() {
 	f.Push(f.RP)
 	f._next()
 }
@@ -368,7 +368,7 @@ CODE  RP!   ( a -- )                \ Set the return stack pointer.
       POP   BP                      \ copy (BP) to tos
       $_next
 */
-func (f *Forth) RPbang() {
+func (f *Forth) _RPbang() {
 	f.RP = f.Pop()
 	f._next()
 }
@@ -379,7 +379,7 @@ CODE  R>    ( -- w )                \ Pop return stack to data stack.
       ADD   BP,2                    \ adjust RP for popping
       $_next
 */
-func (f *Forth) Rfrom() {
+func (f *Forth) _Rfrom() {
 	f.Push(f.WordPtr(f.RP))
 	f.RP = f.RP + 2
 	f._next()
@@ -390,7 +390,7 @@ CODE  R@    ( -- w )                \ Copy top of return stack to data stack.
       PUSH  0[BP]                   \ copy w to data stack
       $_next
 */
-func (f *Forth) Rat() {
+func (f *Forth) _Rat() {
 	f.Push(f.WordPtr(f.RP))
 	f._next()
 }
@@ -401,7 +401,7 @@ CODE  >R    ( w -- )                \ Push data stack to return stack.
       POP   0[BP]                   \ push w to return stack
       $_next
 */
-func (f *Forth) Tor() {
+func (f *Forth) _Tor() {
 	f.RP = f.RP - 2
 	f.SetWordPtr(f.RP, f.Pop())
 	f._next()
@@ -412,18 +412,18 @@ CODE  DROP  ( w -- )                \ Discard top stack item.
       ADD   SP,2                   \ adjust SP to pop
       $_next
 */
-func (f *Forth) Drop() {
+func (f *Forth) _Drop() {
 	f.SP = f.SP + 2
 	f._next()
 }
 
 /*
-CODE  DUP   ( w -- w w )            \ Duplicate the top stack item.
+CODE  DUP   ( w -- w w )            \ _Duplicate the top stack item.
       MOV   BX,SP                   \ use BX to index the stack
       PUSH  0[BX]
       $_next
 */
-func (f *Forth) Dup() {
+func (f *Forth) _Dup() {
 	f.Push(f.WordPtr(f.SP))
 	f._next()
 }
@@ -436,7 +436,7 @@ CODE  SWAP  ( w1 w2 -- w2 w1 )      \ Exchange top two stack items.
       PUSH  AX                      \ push w1
       $_next
 */
-func (f *Forth) Swap() {
+func (f *Forth) _Swap() {
 	bx := f.Pop()
 	ax := f.Pop()
 	f.Push(bx)
@@ -450,7 +450,7 @@ CODE  OVER  ( w1 w2 -- w1 w2 w1 )   \ Copy second stack item to top.
       PUSH  2[BX]                   \ get w1 and push on stack
       $_next
 */
-func (f *Forth) Over() {
+func (f *Forth) _Over() {
 	bx := f.SP + 2
 	f.Push(f.WordPtr(bx))
 	f._next()
@@ -462,7 +462,7 @@ CODE  SP@   ( -- a )                \ Push the current data stack pointer.
       PUSH  BX                      \ push SP back
       $_next
 */
-func (f *Forth) Sp_at() {
+func (f *Forth) _Sp_at() {
 	bx := f.SP
 	f.Push(bx)
 	f._next()
@@ -473,7 +473,7 @@ CODE  SP!   ( a -- )                \ Set the data stack pointer.
       POP   SP                      \ safety
       $_next
 */
-func (f *Forth) Sp_bang() {
+func (f *Forth) _Sp_bang() {
 	f.SP = f.Pop()
 	f._next()
 }
@@ -485,7 +485,7 @@ CODE  0<    ( n -- f )              \ Return true if n is negative.
       PUSH  DX                      \ push 0 or -1
       $_next
 */
-func (f *Forth) Zless() {
+func (f *Forth) _Zless() {
 	ax := asint16(f.Pop())
 	if ax >= 0 {
 		f.Push(0)
@@ -503,7 +503,7 @@ CODE  AND   ( w w -- w )            \ Bitwise AND.
       PUSH  BX
       $_next
 */
-func (f *Forth) And() {
+func (f *Forth) _And() {
 	a := f.Pop()
 	b := f.Pop()
 	r := a & b
@@ -519,7 +519,7 @@ CODE  OR    ( w w -- w )            \ Bitwise inclusive OR.
       PUSH  BX
       $_next
 */
-func (f *Forth) Or() {
+func (f *Forth) _Or() {
 	a := f.Pop()
 	b := f.Pop()
 	r := a | b
@@ -535,7 +535,7 @@ CODE  XOR   ( w w -- w )            \ Bitwise exclusive OR.
       PUSH  BX
       $_next
 */
-func (f *Forth) Xor() {
+func (f *Forth) _Xor() {
 	a := f.Pop()
 	b := f.Pop()
 	r := a ^ b
@@ -555,7 +555,7 @@ CODE  UM+   ( w w -- w cy )
       PUSH  CX                      \ push carry
       $_next
 */
-func (f *Forth) UMplus() {
+func (f *Forth) _UMplus() {
 	b := f.Pop()
 	a := f.Pop()
 	r := a + b

@@ -80,10 +80,10 @@ func StrsEquals(a, b []string) bool {
 
 func TestFields(t *testing.T) {
 	f := `COLON 1PLUS 1 PLUS
-            DOT EXIT
+            DOT _EXIT
             `
 	res := strings.Fields(f)
-	if !StrsEquals(res, []string{"COLON", "1PLUS", "1", "PLUS", "DOT", "EXIT"}) {
+	if !StrsEquals(res, []string{"COLON", "1PLUS", "1", "PLUS", "DOT", "_EXIT"}) {
 		t.Fatal(f, "changed to", strings.Fields(f))
 	}
 }
@@ -91,18 +91,18 @@ func TestFields(t *testing.T) {
 func TestAddPrim(t *testing.T) {
 	f := New(nil, nil)
 	a := func() {}
-	f.AddPrim("BYE", a, 0)
+	f.AddPrim("_BYE", a, 0)
 	code := f.WordPtr(CODEE) // first word in code dictionary
 	if code != 1 {
 		t.Fatal("ought to have a code word there")
 	}
 }
 
-func TestAddPrimCall(t *testing.T) {
+func TestAddPrim_Call(t *testing.T) {
 	f := New(nil, nil)
 	called := false
-	f.AddPrim("BYE", func() { called = true }, 0)
-	f.CallFn("BYE")
+	f.AddPrim("_BYE", func() { called = true }, 0)
+	f._CallFn("_BYE")
 	if called != true {
 		t.Fatal("didn't call the function")
 	}
@@ -111,7 +111,7 @@ func TestAddPrimCall(t *testing.T) {
 func TestMorePrim(t *testing.T) {
 	f := New(nil, nil)
 	f.prims = 0
-	f.AddPrim("BYE", func() {}, 0)
+	f.AddPrim("_BYE", func() {}, 0)
 	f.AddPrim("JK", func() {}, 0)
 	a, _ := f.Addr("JK")
 	if a != CODEE+2 {
@@ -126,7 +126,7 @@ func TestMorePrim(t *testing.T) {
 func TestPcode2Prim(t *testing.T) {
 	f := New(nil, nil)
 	f.prims = 0
-	f.AddPrim("BYE", func() {}, 0)
+	f.AddPrim("_BYE", func() {}, 0)
 	f.AddPrim("JK", func() {}, 0)
 	a := f.Frompcode(2)
 	if a != "JK" {
@@ -135,12 +135,12 @@ func TestPcode2Prim(t *testing.T) {
 
 }
 
-func TestAddPrimCall2(t *testing.T) {
+func TestAddPrim_Call2(t *testing.T) {
 	f := New(nil, nil)
 	f.IP = 0
 	o := f.IP
 	f.AddPrim("NEXT", f._next, 0)
-	f.CallFn("NEXT")
+	f._CallFn("NEXT")
 	o2 := f.IP
 	if o2 <= o {
 		t.Fatal("didn't call the function NEXT or NEXT implementation has changed")
@@ -151,10 +151,10 @@ func TestAddPrimAddr(t *testing.T) {
 	f := New(nil, nil)
 	f.prims = 0
 	a := func() {}
-	f.AddPrim("BYE", a, 0)
-	aa, _ := f.Addr("BYE")
+	f.AddPrim("_BYE", a, 0)
+	aa, _ := f.Addr("_BYE")
 	if aa != CODEE {
-		t.Fatal("address of BYE ought to be", CODEE, "and not ", aa)
+		t.Fatal("address of _BYE ought to be", CODEE, "and not ", aa)
 	}
 }
 
@@ -267,20 +267,20 @@ func BadAddr(t *testing.T) {
 }
 
 /*
-	Test the inner interpreter as they call it.  It's supposed to use NEXT doLIST
-	and EXIT to loop through the high level forth till it finds primitives or
+	Test the inner interpreter as they call it.  It's supposed to use NEXT _doLIST
+	and _EXIT to loop through the high level forth till it finds primitives or
 	machine code code words instead of colon words to execute.
 */
 func TestOldMain(t *testing.T) {
 	f := New(nil, nil)
 	called := false
-	f.AddPrim("BYE", func() {
-		fmt.Println("hello from the BYE primitive")
+	f.AddPrim("_BYE", func() {
+		fmt.Println("hello from the _BYE primitive")
 		called = true
-		f.BYE()
+		f._BYE()
 	}, 0)
 	f.AddWord(": nop ;")
-	f.AddWord(": C BYE ;")
+	f.AddWord(": C _BYE ;")
 	f.AddWord(": B C ;")
 	f.AddWord(": A nop B ;")
 	a, err := f.Addr("A")
@@ -293,7 +293,7 @@ func TestOldMain(t *testing.T) {
 	f._next()
 	f.Main()
 	if !called {
-		t.Fatal("Didn't call BYE function")
+		t.Fatal("Didn't call _BYE function")
 	}
 }
 
@@ -309,7 +309,7 @@ func TestNamedict(t *testing.T) {
 	f := New(nil, nil)
 	s := f.Memory[NAMEE-8 : NAMEE]
 	fmt.Println("range is ", NAMEE-8, "to", NAMEE)
-	good := []byte{0x80, 0x1, 0, 0, 3, 0x42, 0x59, 0x45} // ASSUME BYE is the first primitive
+	good := []byte{0x80, 0x1, 0, 0, 3, 0x42, 0x59, 0x45} // ASSUME _BYE is the first primitive
 	if !bytes.Equal(s, good) {
 		t.Fatal("Wrong memory was", s, "and it should be", good)
 	}
@@ -327,10 +327,10 @@ func TestNamedDictColons(t *testing.T) {
 
 func RunWord(word string, f *Forth, t *testing.T) {
 	called := false
-	f.AddPrim("BYE", func() {
-		fmt.Println("hello from the BYE primitive")
+	f.AddPrim("_BYE", func() {
+		fmt.Println("hello from the _BYE primitive")
 		called = true
-		f.BYE()
+		f._BYE()
 	}, 0)
 	UZERO, _ := f.Addr("UZERO")
 	b, _ := f.Addr("ULAST-UZERO")
@@ -339,10 +339,10 @@ func RunWord(word string, f *Forth, t *testing.T) {
 	if e != nil {
 		t.Fatal("RunWord: no word found", word)
 	}
-	f.AddWord(fmt.Sprintf("doLIST COLD !IO doLIT %d doLIT %d doLIT %d CMOVE %s BYE EXIT", UZERO, UPP, b, word))
+	f.AddWord(fmt.Sprintf("_doLIST COLD !IO doLIT %d doLIT %d doLIT %d CMOVE %s _BYE _EXIT", UZERO, UPP, b, word))
 	f.Main()
 	if !called {
-		t.Fatal("Didn't call BYE function")
+		t.Fatal("Didn't call _BYE function")
 	}
 }
 

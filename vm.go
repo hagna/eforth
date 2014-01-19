@@ -146,8 +146,8 @@ type Forth struct {
 	/*
 	   primitive words or code words are as follows:
 
-	   System interface:       BYE, ?rx, tx!, !io
-	   Inner interpreters:     doLIT, doLIST, next, ?branch,  branch, EXECUTE, EXIT
+	   System interface:       _BYE, ?rx, tx!, !io
+	   Inner interpreters:     doLIT, _doLIST, next, ?branch,  branch, EXECUTE, _EXIT
 	   Memory access:          ! , @,  C!,  C@
 	   Return stack:           RP@,  RP!,  R>, R@,  R>
 	   Data stack:             SP@,  SP!,  DROP, DUP,  SWAP,  OVER
@@ -270,7 +270,7 @@ func (f *Forth) AddWord(cdef string) (e error) {
 	startaddr := CODEE + (2 * (prims - 1))
 	addr := startaddr
 	name := all[1]
-	all[1] = "doLIST"
+	all[1] = "_doLIST"
 	iwords := all[1:]
 	fmt.Println("AddWord:", name)
 	for j, word := range iwords {
@@ -316,9 +316,9 @@ func (f *Forth) Addr(word string) (res uint16, err error) {
 	return
 }
 
-func (f *Forth) CallFn(word string) error {
+func (f *Forth) _CallFn(word string) error {
 	m, ok := f.prim2func[word]
-	//fmt.Printf("CallFn %v \"%s\"\n", m, word)
+	//fmt.Printf("_CallFn %v \"%s\"\n", m, word)
 	if !ok {
 		return errors.New(fmt.Sprintf("No method found for \"%s\"", word))
 	}
@@ -384,12 +384,12 @@ inf:
 			f.showstacks()
 			//fmt.Println(dumpmem(f, f.LAST-10, 20))
 		}
-		err := f.CallFn(word)
+		err := f._CallFn(word)
 		if err != nil {
 			fmt.Println(err)
 			break inf
 		}
-		if f.IP == 0xffff { // for BYE
+		if f.IP == 0xffff { // for _BYE
 			break inf
 		}
 	}

@@ -14,7 +14,7 @@ func TestWordFromASM(t *testing.T) {
 ;		testing routine
 
 		$COLON	COMPO+5,'doTEN',DOTEN
-		DW	DOLIT,99,EXIT
+		DW	DOLIT,99,_EXIT
 `
 	f.WordFromASM(asm)
 	RunWord("doTEN", f, t)
@@ -41,7 +41,7 @@ func TestImedd(t *testing.T) {
 ;		testing routine
 
 		$COLON	IMEDD+5,'doTEN',DOTEN
-		DW	DOLIT,99,EXIT
+		DW	DOLIT,99,_EXIT
 `
 	f.WordFromASM(asm)
 	RunWord("doTEN", f, t)
@@ -64,13 +64,13 @@ func TestWordFromASMLabels(t *testing.T) {
 	f := New(nil, nil)
 	asm := `
 ;   ?DUP	( w -- w w | 0 )
-;		Dup tos if its is not zero.
+;		_Dup tos if its is not zero.
 
 		$COLON	4,'TESTQDUP',QDUP
 		DW	DUPP
 		DW	QBRAN,QDUP1
 		DW	DUPP
-QDUP1:		DW	EXIT
+QDUP1:		DW	_EXIT
 `
 	f.WordFromASM(asm)
 	f.Push(0)
@@ -161,7 +161,7 @@ func NewForth(in string) (o *bytes.Buffer, f *Forth) {
 
 func TestDoTqp(t *testing.T) {
 	b := new(bytes.Buffer)
-	f := New(strings.NewReader("BYE"), b)
+	f := New(strings.NewReader("_BYE"), b)
 	good := `'gooood'`
 	AddWord(f, t, "testme", "!IO", "DOTQP", good)
 	RunWord("testme", f, t)
@@ -173,8 +173,8 @@ func TestDoTqp(t *testing.T) {
 }
 
 func AddWord(f *Forth, t *testing.T, name string, words ...string) {
-	a := append([]string{"CALLL", "doLIST"}, words...)
-	a = append(a, "EXIT")
+	a := append([]string{"CALLL", "_doLIST"}, words...)
+	a = append(a, "_EXIT")
 	err := f.compileWords(name, a, nil, 0)
 	if err != nil {
 		t.Fatal("ERROR compileWords:", err)
@@ -205,7 +205,7 @@ func TestNpZero(t *testing.T) {
 }
 
 func TestMain(t *testing.T) {
-	i := strings.NewReader("BYE \r\n")
+	i := strings.NewReader("_BYE \r\n")
 	o := new(bytes.Buffer)
 	f := New(i, o)
 	f.Main()
@@ -251,7 +251,7 @@ func TestDotid(t *testing.T) {
 }
 
 func TestNotfound(t *testing.T) {
-	i := strings.NewReader("NOTFOUND\r BYE\r")
+	i := strings.NewReader("NOTFOUND\r _BYE\r")
 	o := new(bytes.Buffer)
 	f := New(i, o)
 	f.Main()
@@ -260,7 +260,7 @@ func TestNotfound(t *testing.T) {
 
 
 func TestWords(t *testing.T) {
-	i := strings.NewReader("WORDS BYE\r")
+	i := strings.NewReader("WORDS _BYE\r")
 	o := new(bytes.Buffer)
 	f := New(i, o)
 	f.Main()
@@ -268,7 +268,7 @@ func TestWords(t *testing.T) {
 }
 
 func TestNum(t *testing.T) {
-	i := strings.NewReader("10 BYE\r")
+	i := strings.NewReader("10 _BYE\r")
 	o := new(bytes.Buffer)
 	f := New(i, o)
 	f.Main()
@@ -281,7 +281,7 @@ func TestNum(t *testing.T) {
 }
 
 func TestColon(t *testing.T) {
-	i := strings.NewReader(": boo 10 BYE ; NP @ 100 DUMP CP @ 100 - 100 DUMP boo\r")
+	i := strings.NewReader(": boo 10 _BYE ; NP @ 100 DUMP CP @ 100 - 100 DUMP boo\r")
 	o := new(bytes.Buffer)
 	f := New(i, o)
 	f.Main()
