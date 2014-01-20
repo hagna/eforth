@@ -146,8 +146,8 @@ type Forth struct {
 	/*
 	   primitive words or code words are as follows:
 
-	   System interface:       _BYE, ?rx, tx!, !io
-	   Inner interpreters:     doLIT, _doLIST, next, ?branch,  branch, EXECUTE, _EXIT
+	   System interface:       BYE, ?rx, tx!, !io
+	   Inner interpreters:     doLIT, doLIST, next, ?branch,  branch, EXECUTE, EXIT
 	   Memory access:          ! , @,  C!,  C@
 	   Return stack:           RP@,  RP!,  R>, R@,  R>
 	   Data stack:             SP@,  SP!,  DROP, DUP,  SWAP,  OVER
@@ -174,7 +174,7 @@ type Forth struct {
 	macros map[string]fn // need this for hardcoding "_USER = ..." for #TIB, CONTEXT, and CURRENT user vars
 }
 
-func (f *Forth) NewWord(name string, startaddr uint16, bitmask int) {
+func (f *Forth) newWord(name string, startaddr uint16, bitmask int) {
 	f.addr2word[startaddr] = name
 	f.prim2addr[name] = startaddr
 	f.AddName(name, startaddr, bitmask)
@@ -235,7 +235,7 @@ func (f *Forth) AddPrim(word string, m fn, flags int) {
 	f.pcode2word[f.prims] = word
 	//fmt.Printf("%x is \"%s\"\n", f.prims, word)
 	f.SetWordPtr(addr, f.prims)
-	f.NewWord(word, addr, flags)
+	f.newWord(word, addr, flags)
 }
 
 func (f *Forth) RemoveComments(a string) (b string) {
@@ -270,7 +270,7 @@ func (f *Forth) AddWord(cdef string) (e error) {
 	startaddr := CODEE + (2 * (prims - 1))
 	addr := startaddr
 	name := all[1]
-	all[1] = "_doLIST"
+	all[1] = "doLIST"
 	iwords := all[1:]
 	fmt.Println("AddWord:", name)
 	for j, word := range iwords {
@@ -338,7 +338,7 @@ func (f *Forth) setupIP() error {
 		f.SetWordPtr(COLDD, IP)
 		f.IP = COLDD
 	}
-	f._next()
+	f.Next()
 	return nil
 }
 
@@ -389,7 +389,7 @@ inf:
 			fmt.Println(err)
 			break inf
 		}
-		if f.IP == 0xffff { // for _BYE
+		if f.IP == 0xffff { // for BYE
 			break inf
 		}
 	}
@@ -415,15 +415,17 @@ func (f *Forth) SetBytePtr(i uint16, v byte) {
 /*
 lodsw
 jmp ax
+
+This advances the instruction pointer and the work pointer.
 */
-func (f *Forth) _next() {
+func (f *Forth) Next() {
 	f.aWP = f.IP
 	f.WP = f.WordPtr(f.IP)
 	f.IP += 2
 }
 
 // swap register values
-func XCHG(a, b *uint16) {
+func _XCHG(a, b *uint16) {
 	olda := *a
 	*a = *b
 	*b = olda

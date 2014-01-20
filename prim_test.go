@@ -12,7 +12,7 @@ func TestDoLIST(t *testing.T) {
 	f.IP = 99
 	binary.LittleEndian.PutUint16(f.Memory[23:], 0xdead)
 	f.Push(23) // this is the return address
-	f._doLIST()
+	f.doLIST()
 	b := binary.LittleEndian.Uint16(f.Memory[f.RP:])
 	if b != 99 {
 		t.Fatal("b should be 99 and not", b)
