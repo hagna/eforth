@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/hagna/eforth"
-    "os"
+	"os"
 )
 
 func main() {

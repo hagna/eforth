@@ -45,7 +45,7 @@ const (
 	VERSION = 1
 	COMPO   = 0x040
 	IMEDD   = 0x080
-	MASKK   = 0x07F1F
+	MASKK   = 0x07F1F	// for checking COMPO or IMEDD flags in name dict
 )
 
 // this change could make it easier to port to new word sizes
@@ -362,18 +362,23 @@ func (f *Forth) Main() {
 		fmt.Println(e)
 		return
 	}
-	var pcode uint16
-	var word string
-	debug := false
 inf:
 	for {
+		if ok := f.Step(); ok == false {
+			break inf
+		}
+	}
+}
 
+
+func (f *Forth) Step() bool {
+		debug := false
 		if debug {
 			fmt.Printf("&WP %x WP %x IP %x", f.aWP, f.WP, f.IP)
 		}
 		// simulate JMP to f.WP
-		pcode = f.WordPtr(f.WP)
-		word = f.Frompcode(pcode)
+		pcode := f.WordPtr(f.WP)
+		word := f.Frompcode(pcode)
 		if debug {
 			calling, ok := f.addr2word[f.WP]
 			s := word
@@ -387,12 +392,12 @@ inf:
 		err := f._CallFn(word)
 		if err != nil {
 			fmt.Println(err)
-			break inf
+			return false
 		}
 		if f.IP == 0xffff { // for BYE
-			break inf
+			return false
 		}
-	}
+		return true
 }
 
 func (f *Forth) WordPtr(reg uint16) (res uint16) {
@@ -408,9 +413,6 @@ func (f *Forth) RegLower(w uint16) (res byte) {
 	return
 }
 
-func (f *Forth) SetBytePtr(i uint16, v byte) {
-	f.Memory[i] = v
-}
 
 /*
 lodsw
