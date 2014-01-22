@@ -47,8 +47,6 @@ const (
 	MASKK   = 0x07F1F	// for checking COMPO or IMEDD flags in name dict
 )
 
-// this change could make it easier to port to new word sizes
-// but for now we'll use this
 func asint16(u uint16) int16 {
 	b := new(bytes.Buffer)
 	if err := binary.Write(b, binary.LittleEndian, &u); err != nil {
@@ -73,6 +71,8 @@ func asuint16(i int16) uint16 {
 	return res
 }
 
+// this change could make it easier to port to new word sizes
+// but for now we'll use uint16s and the utility functions asuint16 etc.
 type word [CELLL]byte // the word size
 
 func (v *word) uset(n uint) {
@@ -175,7 +175,7 @@ type Forth struct {
 func (f *Forth) newWord(name string, startaddr uint16, bitmask int) {
 	f.addr2word[startaddr] = name
 	f.prim2addr[name] = startaddr
-	f.AddName(name, startaddr, bitmask)
+	f.addName(name, startaddr, bitmask)
 }
 
 type fn func()
@@ -206,8 +206,8 @@ func New(r io.Reader, w io.Writer) *Forth {
 	return f
 }
 
-func (f *Forth) AddName(word string, addr uint16, bitmask int) {
-	//	fmt.Printf("AddName(%v, %x, %x\n", word, addr, bitmask)
+func (f *Forth) addName(word string, addr uint16, bitmask int) {
+	//fmt.Printf("addName(%v, %x, %x\n", word, addr, bitmask)
 	_len := uint16(len(word) / CELLL)  // rounded down cell count
 	f.NP = f.NP - ((_len + 3) * CELLL) // new header on cell boundary
 	i := f.NP
@@ -225,6 +225,14 @@ func (f *Forth) AddName(word string, addr uint16, bitmask int) {
 
 }
 
+/* For adding primitives to forth defined by go functions
+for example to define bar
+f.AddPrim("doten", func() {
+	f.Push(10)
+	f.Next() 
+}
+most primtives need Next to advance the instruction and work pointers
+*/
 func (f *Forth) AddPrim(word string, m fn, flags int) {
 	f.prims = f.prims + 1
 	addr := CODEE + (2 * (f.prims - 1))
@@ -258,6 +266,10 @@ func (f *Forth) addWord(name string, words ...string) error {
 	return nil
 }
 
+/*
+   Use this for adding high level colon definitions in forth
+   for example: f.AddWord(": z FOR .S NEXT ;") will add the z word.
+*/
 func (f *Forth) AddWord(cdef string) (e error) {
 	e = nil
 	all := strings.Fields(f.removeComments(cdef))
@@ -265,6 +277,10 @@ func (f *Forth) AddWord(cdef string) (e error) {
 	return
 }
 
+/*
+   Use this to return the address of a word defined by a colon definition or 
+   if the word is a primitive the byte code for that word.
+*/
 func (f *Forth) Addr(word string) (res uint16, err error) {
 	err = nil
 	res, ok := f.prim2addr[word]
@@ -289,6 +305,10 @@ func (f *Forth) Frompcode(pcode uint16) (res string) {
 	return
 }
 
+/*
+	For initializing the COLD start address for boot forth
+	Call this before calling Step
+*/
 func (f *Forth) setupIP() error {
 	if IP, e := f.Addr("COLD"); e != nil {
 		return e
@@ -314,7 +334,9 @@ func (f *Forth) showstacks() {
 	fmt.Println(a + "\n" + b + "\n")
 }
 
-// this simulates the von neuman machine or processor
+/*
+	Calls setup and then Steps until it's time to exit.
+*/
 func (f *Forth) Main() {
 	if e := f.setupIP(); e != nil {
 		fmt.Println(e)
@@ -329,6 +351,9 @@ inf:
 }
 
 
+/*
+	Step to the next instructions and run it.  Return true to tell the caller to keep going and false to tell it to stop.
+*/
 func (f *Forth) Step() bool {
 		debug := false
 		if debug {
