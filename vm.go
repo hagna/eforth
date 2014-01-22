@@ -44,7 +44,7 @@ const (
 	VERSION = 1
 	COMPO   = 0x040
 	IMEDD   = 0x080
-	MASKK   = 0x07F1F	// for checking COMPO or IMEDD flags in name dict
+	MASKK   = 0x07F1F // for checking COMPO or IMEDD flags in name dict
 )
 
 func asint16(u uint16) int16 {
@@ -165,8 +165,8 @@ type Forth struct {
 	prim2func  map[string]fn
 	pcode2word map[uint16]string
 
-	LAST uint16 // last name in name dictionary
-	NP   uint16 // bottom of name dictionary
+	_LAST uint16 // last name in name dictionary
+	_NP   uint16 // bottom of name dictionary
 
 	_USER  uint16        // first user variable offset
 	macros map[string]fn // need this for hardcoding "_USER = ..." for #TIB, CONTEXT, and CURRENT user vars
@@ -189,14 +189,17 @@ func setwordptr(mem []byte, reg, value uint16) {
 	binary.LittleEndian.PutUint16(mem[reg:], value)
 }
 
+/*
+Return a new forth instance using reader and writer as input and output
+*/
 func New(r io.Reader, w io.Writer) *Forth {
 	f := &Forth{SP: SPP, RP: RPP,
 		prim2addr:  make(map[string]uint16),
 		addr2word:  make(map[uint16]string),
 		prim2func:  make(map[string]fn),
 		pcode2word: make(map[uint16]string),
-		NP:         NAMEE,
-		LAST:       0,
+		_NP:         NAMEE,
+		_LAST:       0,
 		_USER:      4 * CELLL,
 		Input:      r,
 		Output:     w,
@@ -209,28 +212,30 @@ func New(r io.Reader, w io.Writer) *Forth {
 func (f *Forth) addName(word string, addr uint16, bitmask int) {
 	//fmt.Printf("addName(%v, %x, %x\n", word, addr, bitmask)
 	_len := uint16(len(word) / CELLL)  // rounded down cell count
-	f.NP = f.NP - ((_len + 3) * CELLL) // new header on cell boundary
-	i := f.NP
+	f._NP = f._NP - ((_len + 3) * CELLL) // new header on cell boundary
+	i := f._NP
 	f.SetWordPtr(i, addr)
-	f.SetWordPtr(i+2, f.LAST)
-	f.LAST = uint16(i + 4)
+	f.SetWordPtr(i+2, f._LAST)
+	f._LAST = uint16(i + 4)
 	l := byte(len(word))
 	if bitmask != 0 {
 		l = byte(bitmask) | l
 	}
-	f.Memory[f.LAST] = l
+	f.Memory[f._LAST] = l
 	for j, c := range word {
 		f.Memory[int(i)+5+j] = byte(c)
 	}
 
 }
 
-/* For adding primitives to forth defined by go functions
+/* 
+For adding primitives to forth defined by go functions
 for example to define bar
 f.AddPrim("doten", func() {
 	f.Push(10)
-	f.Next() 
+	f.Next()
 }
+
 most primtives need Next to advance the instruction and work pointers
 */
 func (f *Forth) AddPrim(word string, m fn, flags int) {
@@ -278,8 +283,7 @@ func (f *Forth) AddWord(cdef string) (e error) {
 }
 
 /*
-   Use this to return the address of a word defined by a colon definition or 
-   if the word is a primitive the byte code for that word.
+   Use this to return the starting address of a word defined by a colon definition or or the byte code for the word if it is a primitive.
 */
 func (f *Forth) Addr(word string) (res uint16, err error) {
 	err = nil
@@ -306,8 +310,8 @@ func (f *Forth) Frompcode(pcode uint16) (res string) {
 }
 
 /*
-	For initializing the COLD start address for boot forth
-	Call this before calling Step
+   For initializing the COLD start address for boot forth
+   Call this before calling Step.
 */
 func (f *Forth) setupIP() error {
 	if IP, e := f.Addr("COLD"); e != nil {
@@ -335,7 +339,7 @@ func (f *Forth) showstacks() {
 }
 
 /*
-	Calls setup and then Steps until it's time to exit.
+Calls setup and then Steps until it's time to exit.
 */
 func (f *Forth) Main() {
 	if e := f.setupIP(); e != nil {
@@ -350,58 +354,65 @@ inf:
 	}
 }
 
-
 /*
-	Step to the next instructions and run it.  Return true to tell the caller to keep going and false to tell it to stop.
+Step to the next instructions and run it.  Return true to tell the caller to keep going and false to tell it to stop.
 */
 func (f *Forth) Step() bool {
-		debug := false
-		if debug {
-			fmt.Printf("&WP %x WP %x IP %x", f.aWP, f.WP, f.IP)
+	debug := false
+	if debug {
+		fmt.Printf("&WP %x WP %x IP %x", f.aWP, f.WP, f.IP)
+	}
+	// simulate JMP to f.WP
+	pcode := f.WordPtr(f.WP)
+	word := f.Frompcode(pcode)
+	if debug {
+		calling, ok := f.addr2word[f.WP]
+		s := word
+		if ok {
+			s = "::" + calling
 		}
-		// simulate JMP to f.WP
-		pcode := f.WordPtr(f.WP)
-		word := f.Frompcode(pcode)
-		if debug {
-			calling, ok := f.addr2word[f.WP]
-			s := word
-			if ok {
-				s = "::" + calling
-			}
-			fmt.Println("", s)
-			f.showstacks()
-			//fmt.Println(dumpmem(f, f.LAST-10, 20))
-		}
-		err := f._CallFn(word)
-		if err != nil {
-			fmt.Println(err)
-			return false
-		}
-		if f.IP == 0xffff { // for BYE
-			return false
-		}
-		return true
+		fmt.Println("", s)
+		f.showstacks()
+		//fmt.Println(dumpmem(f, f._LAST-10, 20))
+	}
+	err := f._CallFn(word)
+	if err != nil {
+		fmt.Println(err)
+		return false
+	}
+	if f.IP == 0xffff { // for BYE
+		return false
+	}
+	return true
 }
 
+/*
+Get the word pointed to by reg
+*/
 func (f *Forth) WordPtr(reg uint16) (res uint16) {
 	return wordptr(f.Memory[0:], reg)
 }
 
+/*
+Set the word reg points to to value
+*/
 func (f *Forth) SetWordPtr(reg, value uint16) {
 	setwordptr(f.Memory[0:], reg, value)
 }
 
+/*
+Return the lower byte of the word w
+*/
 func (f *Forth) RegLower(w uint16) (res byte) {
 	res = byte(0x00ff & w)
 	return
 }
 
-
 /*
+This advances the instruction pointer and the work pointer.
+
 lodsw
 jmp ax
-
-This advances the instruction pointer and the work pointer.
 */
 func (f *Forth) Next() {
 	f.aWP = f.IP
@@ -416,17 +427,21 @@ func _XCHG(a, b *uint16) {
 	*b = olda
 }
 
-// PUSH is
-// SP = SP -2
-// [SP] = operand
+/*
+Push onto data stack.
+SP = SP -2
+[SP] = operand
+*/
 func (f *Forth) Push(v uint16) {
 	f.SP = f.SP - 2
 	binary.LittleEndian.PutUint16(f.Memory[f.SP:], v)
 }
 
-// POP is
-// operand = [SP]
-// SP = SP + 2
+/*
+Pop off of data stack
+operand = [SP]
+SP = SP + 2
+*/
 func (f *Forth) Pop() uint16 {
 	res := binary.LittleEndian.Uint16(f.Memory[f.SP:])
 	f.SP = f.SP + 2

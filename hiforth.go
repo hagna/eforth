@@ -203,8 +203,8 @@ func (f *Forth) doUserVariables() {
 	INTER, _ := f.Addr("$INTERPRET")
 	NUMBQ, _ := f.Addr("NUMBER?")
 	CTOP := CODEE + CELLL*f.prims
-	NTOP := f.NP
-	LASTN := f.LAST
+	NTOP := f._NP
+	LASTN := f._LAST
 
 	initvars := []uint16{0, 0, 0, 0, //reserved
 		SPP,   //SP0
@@ -250,6 +250,22 @@ func (f *Forth) doUserVariables() {
 
 }
 
+/*
+Compile a forth word from a definition that looks like this:
+;   hi		( -- )
+;		Display the sign-on message of eForth.
+
+		$COLON	2,'hi',HI
+		DW	STOIO,CR		;initialize I/O
+		D$	DOTQP,'eForth v'	;model
+		DW	BASE,AT,HEX		;save radix
+		DW	VERSN,BDIGS,DIG,DIG
+		DW	DOLIT,'.',HOLD
+		DW	DIGS,EDIGS,TYPEE	;format version number
+		DW	BASE,STORE,CR,EXIT	;restore radix
+
+
+*/
 func (f *Forth) WordFromASM(asm string) (err error) {
 	words := []string{}
 	labels := make(map[string]uint16)

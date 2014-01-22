@@ -317,9 +317,9 @@ func TestNamedict(t *testing.T) {
 
 func TestNamedDictColons(t *testing.T) {
 	f := New(nil, nil)
-	oldNP := f.NP
+	oldNP := f._NP
 	f.AddWord(": nop ;")
-	newNP := f.NP
+	newNP := f._NP
 	if oldNP == newNP {
 		t.Fatal("adding a word should change the NP pointer, but it didn't", oldNP)
 	}

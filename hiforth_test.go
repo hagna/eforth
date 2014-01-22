@@ -22,7 +22,7 @@ func TestWordFromASM(t *testing.T) {
 	if a != 99 {
 		t.Fatal(asm, "didn't leave 99 on the stack left", a)
 	}
-	v := f.WordPtr(f.LAST - 2)
+	v := f.WordPtr(f._LAST - 2)
 	t.Log("before", dumpmem(f, v, 10))
 	v = f.WordPtr(v - 2)
 	vl := f.WordPtr(v)
@@ -49,7 +49,7 @@ func TestImedd(t *testing.T) {
 	if a != 99 {
 		t.Fatal(asm, "didn't leave 99 on the stack left", a)
 	}
-	v := f.WordPtr(f.LAST - 2)
+	v := f.WordPtr(f._LAST - 2)
 	t.Log("before", dumpmem(f, v, 10))
 	v = f.WordPtr(v - 2)
 	vl := f.WordPtr(v)
@@ -197,10 +197,10 @@ func TestNpZero(t *testing.T) {
 	AddWord(f, t, "NPis", "NP", "@")
 	RunWord("NPis", f, t)
 	z := f.Pop()
-	if z != f.NP {
+	if z != f._NP {
 		t.Log("UPP memory is", dumpmem(f, UPP, 100), "UPP is", UPP)
 		t.Log("UPP+35*CELLL memory is", dumpmem(f, UPP+35*CELLL, 10))
-		t.Fatal("should have", f.NP, "but we have", z, "instead")
+		t.Fatal("should have", f._NP, "but we have", z, "instead")
 	}
 }
 
@@ -257,7 +257,6 @@ func TestNotfound(t *testing.T) {
 	f.Main()
 	t.Log(string(o.Bytes()))
 }
-
 
 func TestWords(t *testing.T) {
 	i := strings.NewReader("WORDS BYE\r")
