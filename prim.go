@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-func (f *Forth) AddPrimitives() {
+func (f *Forth) addPrimitives() {
 	words := []struct {
 		word  string
 		m     fn

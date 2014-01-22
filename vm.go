@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"strconv"
 	"strings"
 )
 
@@ -116,7 +115,6 @@ func (v *word) unsigned() uint {
 
 }
 
-// 76 13 e8 35 3 62 61 72 == *bar where bar is the last field and the others are the code reference and prev word reference
 type Forth struct {
 	/*
 
@@ -203,8 +201,8 @@ func New(r io.Reader, w io.Writer) *Forth {
 		Input:      r,
 		Output:     w,
 	}
-	f.AddPrimitives()
-	f.AddHiforth()
+	f.addPrimitives()
+	f.addHiforth()
 	return f
 }
 
@@ -238,7 +236,7 @@ func (f *Forth) AddPrim(word string, m fn, flags int) {
 	f.newWord(word, addr, flags)
 }
 
-func (f *Forth) RemoveComments(a string) (b string) {
+func (f *Forth) removeComments(a string) (b string) {
 	b = a
 	i := strings.Index(a, "(")
 	if i == -1 {
@@ -250,60 +248,20 @@ func (f *Forth) RemoveComments(a string) (b string) {
 	return
 }
 
-func doTHEN(f *Forth, ifs []uint16, addr uint16) {
-	li := len(ifs) - 1
-	ifaddr := ifs[li]
-	ifs = ifs[:li]
-	f.SetWordPtr(ifaddr, addr)
-}
-
-func doIF(f *Forth, addr uint16, ifs *[]uint16, word string) {
-	*ifs = append(*ifs, addr+4)
-	w, _ := f.Addr(word)
-	f.SetWordPtr(addr+2, w)
+func (f *Forth) addWord(name string, words ...string) error {
+	a := append([]string{"CALLL", "doLIST"}, words...)
+	a = append(a, "EXIT")
+	err := f.compileWords(name, a, nil, 0)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (f *Forth) AddWord(cdef string) (e error) {
-	prims := f.prims + 1
 	e = nil
-	all := strings.Fields(f.RemoveComments(cdef))
-	startaddr := CODEE + (2 * (prims - 1))
-	addr := startaddr
-	name := all[1]
-	all[1] = "doLIST"
-	iwords := all[1:]
-	fmt.Println("AddWord:", name)
-	for j, word := range iwords {
-		fmt.Println("\t", word)
-		var wa uint16
-		if j > 1 && iwords[j-1] == "doLIT" {
-			x, err := strconv.Atoi(word)
-			if err != nil {
-				e = err
-				return
-			}
-			wa = uint16(x)
-		} else {
-			x, err := f.Addr(word)
-			if err != nil {
-				e = err
-				fmt.Printf("ERROR: not adding \"%v\" because %v\n", name, err)
-				return
-			}
-			wa = uint16(x)
-
-		}
-		addr = addr + 2
-		f.SetWordPtr(addr, wa)
-		prims = prims + 1
-		fmt.Printf("%x: %x %s\n", addr, wa, word)
-		fmt.Printf("addr is %x\n", addr)
-	}
-
-	f.SetWordPtr(startaddr, CALLL) // CALL is 2
-	f.prim2addr[name] = startaddr
-	f.AddName(name, startaddr, 0)
-	f.prims = prims
+	all := strings.Fields(f.removeComments(cdef))
+	e = f.addWord(all[1], all[2:len(all)-1]...)
 	return
 }
 

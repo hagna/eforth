@@ -367,7 +367,7 @@ func (f *Forth) WordFromASM(asm string) (err error) {
 
 }
 
-func (f *Forth) AddHiforth() {
+func (f *Forth) addHiforth() {
 	constants := []struct {
 		s string
 		v uint16
