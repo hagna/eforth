@@ -1,13 +1,15 @@
 # eforth #
 
-This is an implementation of eforth in golang.  Some have said it ought to be called go forth, but they don't know go eschews such attention, being a boring behind the scenes systems language who prefers soup to leg of lamb with appricot glaze, and not some primadona like JavaScript.
+This is an eforth simulator.  You could use it for evolving programs that do something useful (genetic algorithms) without bothering with language grammars, of course if you have time to wait for programs to evolve then you probably aren't concerned with time.  It's pretty easy to add custom words that are go functions. 
 
 ## Try it ##
 
 On *nix just clone the repo and then in the eforth directory do
 
-    cd example; go build
-    ./forth 
+    go get github.com/hagna/eforth
+    go install github.com/hagna/eforth/eforth_repl
+    
+    $GOPATH/bin/eforth_repl
 
     eForth 0.01
     WORDS
