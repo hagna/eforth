@@ -6,7 +6,7 @@ This is an eforth simulator.
 
 ## Try it ##
 
-On *nix just clone the repo and then in the eforth directory do
+To try it do this:
 
     go get github.com/hagna/eforth
     go install github.com/hagna/eforth/eforth_repl
