@@ -1,11 +1,6 @@
-# What is it for? #
+# EForth #
 
-Say you have a computer game, and you want to let users script enemy behavior.  You know you want to embed some programming language into your game, but you haven't done it yet because you are still reading something like this http://www.goodmath.org/blog/2014/05/04/combinator-parsing-part-1/ or reading about how to restrict lua after it is embedded or maybe you just have the idea, but don't have the drive to make it happen yet.  This eforth aims to deliver just enough programming language with comparitively little embedding effort.
-
-# What is it? #
-
-This is EFORTH simulated in golang, and EFORTH is just a variant of FORTH (http://galileo.phys.virginia.edu/classes/551.jvn.fall01/primer.htm)
-
+This is a golang simulated EFORTH.
 
 
 ## Try it ##
