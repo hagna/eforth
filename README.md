@@ -1,6 +1,8 @@
 # eforth #
 
-This is an eforth simulator.  You could use it for evolving programs that do something useful (genetic algorithms) without bothering with language grammars, of course if you have time to wait for programs to evolve then you probably aren't concerned with time.  It's pretty easy to add custom words that are go functions. 
+This is an eforth simulator.
+
+
 
 ## Try it ##
 
