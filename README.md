@@ -1,13 +1,16 @@
-# eforth #
+# EForth #
 
-This is an implementation of eforth in golang.  Some have said it ought to be called go forth, but they don't know go eschews such attention, being a boring behind the scenes systems language who prefers soup to leg of lamb with appricot glaze, and not some primadona like JavaScript.
+This is a golang simulated EFORTH.
+
 
 ## Try it ##
 
-On *nix just clone the repo and then in the eforth directory do
+To try it do this:
 
-    cd example; go build
-    ./forth 
+    go get github.com/hagna/eforth
+    go install github.com/hagna/eforth/eforth_repl
+    
+    $GOPATH/bin/eforth_repl
 
     eForth 0.01
     WORDS
