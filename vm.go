@@ -1,6 +1,15 @@
+/* 
+   This is an implementation of eforth.  Eforth is cool because you only need
+   to implement ~30 primitive words (forth words) in the native language
+   (machine language usually), and the rest of the words can be written in
+   forth. This program reproduces the behavior of EFORTH.COM[0]. There is a
+   tutorial in the doc/ folder which used to be here [1].
+   
+   [0] http://www.calcentral.com/~forth/forth/
+   [1] http://www.offete.com/files/zeneForth.htm. 
+*/
 package eforth
 
-// following tutorial at http://www.offete.com/files/zeneForth.htm
 
 import (
 	"bytes"
